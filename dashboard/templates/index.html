@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kids Magic Show — Dashboard</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+         background: #0f0f1a; color: #e8e8f0; min-height: 100vh; }
+
+  header { background: linear-gradient(135deg, #6c3fc7, #9b59b6);
+           padding: 16px 28px; display: flex; align-items: center; gap: 14px;
+           box-shadow: 0 2px 20px rgba(108,63,199,0.4); }
+  header h1 { font-size: 1.3rem; font-weight: 700; }
+  header .sub { font-size: .78rem; opacity: .75; margin-top: 2px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: #2ecc71;
+         box-shadow: 0 0 8px #2ecc71; animation: pulse 2s infinite; flex-shrink: 0; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  .toolbar { display: flex; align-items: center; gap: 12px;
+             padding: 10px 28px; background: #16162a; border-bottom: 1px solid #2a2a45; }
+  .toolbar span { font-size: .78rem; color: #888; }
+  .btn { padding: 5px 14px; border-radius: 6px; border: none; cursor: pointer;
+         font-size: .78rem; font-weight: 600; transition: background .2s; }
+  .btn-primary { background: #6c3fc7; color: #fff; }
+  .btn-primary:hover { background: #7d4fe0; }
+  select { background: #1e1e35; color: #ccc; border: 1px solid #2a2a45;
+           padding: 4px 8px; border-radius: 6px; font-size: .78rem; }
+
+  /* 2×2 grid */
+  .grid { display: grid; grid-template-columns: 1fr 1fr;
+          grid-template-rows: auto auto; gap: 18px; padding: 20px 28px; }
+
+  .card { background: #16162a; border-radius: 14px; border: 1px solid #2a2a45;
+          overflow: hidden; display: flex; flex-direction: column; }
+  .card-header { padding: 14px 18px 10px; border-bottom: 1px solid #2a2a45;
+                 display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; }
+  .card-header h2 { font-size: .9rem; font-weight: 700; }
+  .badge { padding: 2px 9px; border-radius: 20px; font-size: .68rem; font-weight: 700; }
+  .badge-purple { background: rgba(108,63,199,.25); color: #a07ae8; }
+  .badge-green  { background: rgba(46,204,113,.15); color: #2ecc71; }
+  .badge-blue   { background: rgba(52,152,219,.15); color: #5dade2; }
+  .badge-orange { background: rgba(230,126,34,.15); color: #e67e22; }
+
+  .card-body { padding: 14px 18px; flex: 1; overflow-y: auto; max-height: 400px; }
+
+  /* Status bar */
+  .status-bar { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 14px; }
+  .status-box { background: #1e1e35; border-radius: 8px; padding: 10px 12px; text-align: center; }
+  .status-box .val { font-size: 1.6rem; font-weight: 800; }
+  .status-box .lbl { font-size: .65rem; color: #888; margin-top: 1px; }
+  .s-green { color: #2ecc71; }
+  .s-orange { color: #e67e22; }
+  .s-red { color: #e74c3c; }
+
+  /* Ads stats */
+  .stat-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 14px; }
+  .stat { background: #1e1e35; border-radius: 8px; padding: 10px 12px; text-align: center; }
+  .stat .val { font-size: 1.5rem; font-weight: 800; color: #a07ae8; }
+  .stat .lbl { font-size: .65rem; color: #888; margin-top: 1px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: .78rem; }
+  thead tr { background: #1e1e35; }
+  th { padding: 7px 8px; text-align: left; color: #888; font-weight: 600;
+       font-size: .68rem; text-transform: uppercase; }
+  td { padding: 7px 8px; border-bottom: 1px solid #1e1e35; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(108,63,199,.08); }
+
+  /* Section labels */
+  .sec { font-size: .67rem; font-weight: 700; text-transform: uppercase;
+         letter-spacing: .8px; color: #666; margin: 10px 0 6px; }
+  .sec:first-child { margin-top: 0; }
+
+  /* Lead items */
+  .lead-item { background: #1e1e35; border-radius: 7px; padding: 9px 11px;
+               margin-bottom: 5px; border-left: 3px solid #6c3fc7; }
+  .lead-item.reply   { border-left-color: #2ecc71; }
+  .lead-item.declined { border-left-color: #e74c3c; }
+  .lead-from    { font-size: .76rem; font-weight: 600; color: #c0b0f0;
+                  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lead-subject { font-size: .73rem; color: #999; margin-top: 1px;
+                  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lead-date    { font-size: .65rem; color: #555; margin-top: 2px; }
+
+  /* WhatsApp chat items */
+  .wa-item { background: #1e1e35; border-radius: 7px; padding: 9px 11px;
+             margin-bottom: 5px; display: flex; gap: 10px; align-items: flex-start; }
+  .wa-icon { width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+             display: flex; align-items: center; justify-content: center;
+             font-size: .85rem; font-weight: 700; }
+  .wa-partner  { background: rgba(108,63,199,.3); color: #a07ae8; }
+  .wa-inquiry  { background: rgba(52,152,219,.2); color: #5dade2; }
+  .wa-booked   { background: rgba(46,204,113,.2); color: #2ecc71; }
+  .wa-declined { background: rgba(231,76,60,.15); color: #e74c3c; }
+  .wa-info .name { font-size: .78rem; font-weight: 600; color: #ddd; }
+  .wa-info .msg  { font-size: .73rem; color: #888; margin-top: 1px;
+                   display: -webkit-box; -webkit-line-clamp: 2;
+                   -webkit-box-orient: vertical; overflow: hidden; }
+  .wa-info .note { font-size: .67rem; color: #555; margin-top: 2px; font-style: italic; }
+  .wa-time { font-size: .65rem; color: #555; margin-top: 2px; white-space: nowrap; }
+  .wa-updated { font-size: .65rem; color: #444; text-align: right; margin-bottom: 6px; font-style: italic; }
+
+  /* WhatsApp summary */
+  .wa-summary { display: grid; grid-template-columns: repeat(4,1fr); gap: 6px; margin-bottom: 12px; }
+  .wa-sum-box { background: #1e1e35; border-radius: 7px; padding: 8px; text-align: center; }
+  .wa-sum-box .v { font-size: 1.2rem; font-weight: 800; }
+  .wa-sum-box .l { font-size: .6rem; color: #888; margin-top: 1px; }
+
+  /* Calendar */
+  .event-item { display: flex; gap: 10px; padding: 9px 0;
+                border-bottom: 1px solid #1e1e35; align-items: flex-start; }
+  .event-item:last-child { border-bottom: none; }
+  .ev-date { background: linear-gradient(135deg, #6c3fc7, #9b59b6);
+             border-radius: 7px; padding: 5px 8px; text-align: center;
+             min-width: 42px; flex-shrink: 0; }
+  .ev-date .day { font-size: 1.1rem; font-weight: 800; line-height: 1; }
+  .ev-date .mon { font-size: .6rem; text-transform: uppercase; opacity: .85; }
+  .ev-info .title { font-size: .82rem; font-weight: 600; }
+  .ev-info .time  { font-size: .72rem; color: #888; margin-top: 1px; }
+  .ev-info .loc   { font-size: .68rem; color: #7c5cbf; margin-top: 1px; }
+
+  .empty { text-align: center; color: #444; font-size: .8rem; padding: 28px 0; }
+  .error { color: #e74c3c; font-size: .78rem; padding: 10px; background: rgba(231,76,60,.1);
+           border-radius: 7px; }
+  .loading { text-align: center; color: #555; font-size: .8rem; padding: 36px 0; }
+
+  @media(max-width: 800px){ .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="dot"></div>
+  <div>
+    <h1>🎩 Kids Magic Show — Dashboard</h1>
+    <div class="sub">Live-Übersicht · info@kidsmagicshow.ch</div>
+  </div>
+</header>
+
+<div class="toolbar">
+  <button class="btn btn-primary" onclick="refresh()">↻ Aktualisieren</button>
+  <span>Auto-Refresh alle</span>
+  <select id="interval" onchange="setAuto()">
+    <option value="300">5 Min</option>
+    <option value="600">10 Min</option>
+    <option value="1800">30 Min</option>
+    <option value="0">Aus</option>
+  </select>
+  <span id="last-update" style="margin-left:auto;font-size:.75rem;color:#555"></span>
+</div>
+
+<div class="grid">
+
+  <!-- LEADS (Gmail) -->
+  <div class="card">
+    <div class="card-header">
+      <h2>📬 Leads & Antworten (Gmail)</h2>
+      <span class="badge badge-green" id="leads-badge">…</span>
+    </div>
+    <div class="card-body" id="leads-body"><div class="loading">Laden…</div></div>
+  </div>
+
+  <!-- GOOGLE ADS -->
+  <div class="card">
+    <div class="card-header">
+      <h2>📊 Google Ads <span style="font-size:.72rem;color:#666;font-weight:400">30 Tage</span></h2>
+      <span class="badge badge-purple" id="ads-badge">…</span>
+    </div>
+    <div class="card-body" id="ads-body"><div class="loading">Laden…</div></div>
+  </div>
+
+  <!-- WHATSAPP -->
+  <div class="card">
+    <div class="card-header">
+      <h2>💬 WhatsApp Business</h2>
+      <span class="badge badge-green" id="wa-badge">…</span>
+    </div>
+    <div class="card-body" id="wa-body"><div class="loading">Laden…</div></div>
+  </div>
+
+  <!-- CALENDAR -->
+  <div class="card">
+    <div class="card-header">
+      <h2>📅 Nächste Shows</h2>
+      <span class="badge badge-blue" id="cal-badge">…</span>
+    </div>
+    <div class="card-body" id="cal-body"><div class="loading">Laden…</div></div>
+  </div>
+
+</div>
+
+<script>
+let timer = null;
+
+function fmt(str) {
+  if (!str) return '';
+  try { return new Date(str).toLocaleDateString('de-CH', {day:'2-digit', month:'short', year:'numeric'}); }
+  catch { return str.substring(0,10); }
+}
+function fmtTime(str) {
+  if (!str || !str.includes('T')) return '';
+  try { return new Date(str).toLocaleTimeString('de-CH', {hour:'2-digit', minute:'2-digit'}); }
+  catch { return ''; }
+}
+function fmtDay(str) {
+  if (!str) return '?';
+  try { return new Date(str).toLocaleDateString('de-CH', {day:'2-digit'}); } catch { return '?'; }
+}
+function fmtMon(str) {
+  if (!str) return '';
+  try { return new Date(str).toLocaleDateString('de-CH', {month:'short'}); } catch { return ''; }
+}
+function ago(str) {
+  if (!str) return '';
+  try {
+    const diff = (Date.now() - new Date(str)) / 86400000;
+    if (diff < 1) return 'heute';
+    if (diff < 2) return 'gestern';
+    return Math.round(diff) + 'd ago';
+  } catch { return str.substring(0,10); }
+}
+
+async function loadLeads() {
+  const body = document.getElementById('leads-body');
+  const badge = document.getElementById('leads-badge');
+  try {
+    const d = await fetch('/api/leads').then(r => r.json());
+    if (d.error) { body.innerHTML = `<div class="error">⚠ ${d.error}</div>`; badge.textContent = 'Fehler'; return; }
+
+    const s = d.status || {};
+    badge.textContent = `${(s.replied||0) + (d.inquiries||[]).length} aktiv`;
+
+    let html = '';
+
+    // Status bar
+    if (s.sent > 0) {
+      html += `<div class="status-bar">
+        <div class="status-box"><div class="val s-green">${s.replied||0}</div><div class="lbl">✅ Geantwortet</div></div>
+        <div class="status-box"><div class="val s-orange">${s.no_reply||0}</div><div class="lbl">⏰ Kein Antwort</div></div>
+        <div class="status-box"><div class="val s-red">${s.declined||0}</div><div class="lbl">❌ Abgesagt</div></div>
+      </div>`;
+    }
+
+    // Direct inquiries
+    if ((d.inquiries||[]).length) {
+      html += `<div class="sec">🔔 Neue Anfragen (${d.inquiries.length})</div>`;
+      for (const m of d.inquiries) {
+        html += `<div class="lead-item">
+          <div class="lead-from">${m.from}</div>
+          <div class="lead-subject">${m.subject}</div>
+          <div class="lead-date">${m.date.substring(0,16)}</div>
+        </div>`;
+      }
+    }
+
+    // B2B replies
+    if ((d.replies||[]).length) {
+      html += `<div class="sec">✅ B2B Antworten (${d.replies.length})</div>`;
+      for (const m of d.replies) {
+        html += `<div class="lead-item reply">
+          <div class="lead-from">${m.from}</div>
+          <div class="lead-subject">${m.subject}</div>
+          <div class="lead-date">${m.date.substring(0,16)}</div>
+        </div>`;
+      }
+    }
+
+    // Declined
+    if ((d.declined||[]).length) {
+      html += `<div class="sec">❌ Abgesagt (${d.declined.length})</div>`;
+      for (const m of d.declined) {
+        html += `<div class="lead-item declined">
+          <div class="lead-from">${m.from}</div>
+          <div class="lead-subject">${m.subject}</div>
+          <div class="lead-date">${m.date.substring(0,16)}</div>
+        </div>`;
+      }
+    }
+
+    if (!html) html = '<div class="empty">Keine Nachrichten</div>';
+    body.innerHTML = html;
+  } catch(e) { body.innerHTML = `<div class="error">Verbindungsfehler</div>`; }
+}
+
+async function loadAds() {
+  const body = document.getElementById('ads-body');
+  const badge = document.getElementById('ads-badge');
+  try {
+    const d = await fetch('/api/ads').then(r => r.json());
+    if (d.error) { body.innerHTML = `<div class="error">⚠ ${d.error}</div>`; badge.textContent = 'Fehler'; return; }
+    badge.textContent = `${d.total_cost} CHF`;
+    let html = `<div class="stat-row">
+      <div class="stat"><div class="val">${d.total_cost}</div><div class="lbl">CHF Ausgaben</div></div>
+      <div class="stat"><div class="val">${d.total_clicks}</div><div class="lbl">Klicks</div></div>
+      <div class="stat"><div class="val">${d.total_impressions}</div><div class="lbl">Impressionen</div></div>
+    </div>
+    <table><thead><tr><th>Kampagne</th><th>CTR</th><th>Klicks</th><th>CHF</th></tr></thead><tbody>`;
+    for (const c of d.campaigns) {
+      html += `<tr><td>${c.name}</td><td>${c.ctr}</td><td>${c.clicks}</td><td>${c.cost}</td></tr>`;
+    }
+    html += '</tbody></table>';
+    body.innerHTML = html;
+  } catch(e) { body.innerHTML = `<div class="error">Verbindungsfehler</div>`; }
+}
+
+const WA_TYPE = {
+  partner:  { icon: '🤝', cls: 'wa-partner',  label: 'Partner'   },
+  inquiry:  { icon: '💬', cls: 'wa-inquiry',  label: 'Anfrage'   },
+  booked:   { icon: '✅', cls: 'wa-booked',   label: 'Gebucht'   },
+  completed:{ icon: '⭐', cls: 'wa-booked',   label: 'Abgeschl.' },
+  declined: { icon: '❌', cls: 'wa-declined', label: 'Abgesagt'  },
+};
+
+async function loadWhatsApp() {
+  const body = document.getElementById('wa-body');
+  const badge = document.getElementById('wa-badge');
+  try {
+    const d = await fetch('/api/whatsapp').then(r => r.json());
+    if (d.error) { body.innerHTML = `<div class="error">⚠ ${d.error}</div>`; badge.textContent = 'Fehler'; return; }
+
+    const s = d.summary || {};
+    badge.textContent = `${(s.inquiries||0) + (s.booked||0)} aktiv`;
+
+    const updAgo = d.updated ? ago(d.updated) : '?';
+
+    let html = `<div class="wa-updated">Stand: ${updAgo} · WhatsApp wird von Claude aktualisiert</div>`;
+
+    // Summary counts
+    html += `<div class="wa-summary">
+      <div class="wa-sum-box"><div class="v" style="color:#a07ae8">${s.partners||0}</div><div class="l">Partner</div></div>
+      <div class="wa-sum-box"><div class="v" style="color:#5dade2">${s.inquiries||0}</div><div class="l">Anfragen</div></div>
+      <div class="wa-sum-box"><div class="v" style="color:#2ecc71">${s.booked||0}</div><div class="l">Gebucht</div></div>
+      <div class="wa-sum-box"><div class="v" style="color:#e74c3c">${s.declined||0}</div><div class="l">Abgesagt</div></div>
+    </div>`;
+
+    // Sort by last_time desc
+    const chats = (d.chats || []).sort((a,b) => new Date(b.last_time) - new Date(a.last_time));
+
+    for (const c of chats) {
+      const t = WA_TYPE[c.type] || WA_TYPE.inquiry;
+      const fromMe = c.is_from_me ? '↗ ' : '';
+      html += `<div class="wa-item">
+        <div class="wa-icon ${t.cls}">${t.icon}</div>
+        <div class="wa-info" style="flex:1;min-width:0">
+          <div class="name">${c.name} <span style="font-size:.62rem;color:#555;font-weight:400">${t.label}</span></div>
+          <div class="msg">${fromMe}${c.last_message || '—'}</div>
+          ${c.note ? `<div class="note">${c.note}</div>` : ''}
+          <div class="wa-time">${ago(c.last_time)}</div>
+        </div>
+      </div>`;
+    }
+
+    if (!chats.length) html += '<div class="empty">Keine Business-Chats</div>';
+    body.innerHTML = html;
+  } catch(e) { body.innerHTML = `<div class="error">Verbindungsfehler</div>`; }
+}
+
+async function loadCalendar() {
+  const body = document.getElementById('cal-body');
+  const badge = document.getElementById('cal-badge');
+  try {
+    const d = await fetch('/api/calendar').then(r => r.json());
+    if (d.error) { body.innerHTML = `<div class="error">⚠ ${d.error}</div>`; badge.textContent = 'Fehler'; return; }
+    badge.textContent = `${d.events.length} Events`;
+    if (!d.events.length) { body.innerHTML = '<div class="empty">Keine bevorstehenden Events</div>'; return; }
+    let html = '';
+    for (const e of d.events) {
+      html += `<div class="event-item">
+        <div class="ev-date"><div class="day">${fmtDay(e.start)}</div><div class="mon">${fmtMon(e.start)}</div></div>
+        <div class="ev-info">
+          <div class="title">${e.title}</div>
+          <div class="time">${fmtTime(e.start) || fmt(e.start)}</div>
+          ${e.location ? `<div class="loc">📍 ${e.location}</div>` : ''}
+        </div>
+      </div>`;
+    }
+    body.innerHTML = html;
+  } catch(e) { body.innerHTML = `<div class="error">Verbindungsfehler</div>`; }
+}
+
+function refresh() {
+  fetch('/api/refresh');
+  loadLeads(); loadAds(); loadWhatsApp(); loadCalendar();
+  document.getElementById('last-update').textContent =
+    'Stand: ' + new Date().toLocaleTimeString('de-CH');
+}
+
+function setAuto() {
+  if (timer) clearInterval(timer);
+  const sec = parseInt(document.getElementById('interval').value);
+  if (sec > 0) timer = setInterval(refresh, sec * 1000);
+}
+
+refresh();
+setAuto();
+</script>
+</body>
+</html>

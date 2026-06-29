@@ -1,0 +1,19 @@
+venv_sys/
+__pycache__/
+*.pyc
+*.pyo
+
+# credentials — never commit
+google-ads.yaml
+client_secret.json
+token.json
+dashboard/token.json
+
+# local cache files
+dashboard/whatsapp_cache.json
+dashboard/leads_archive.json
+dashboard/dashboard.log
+
+# invoices & personal docs
+*.pdf
+invoice_*.html
