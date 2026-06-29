@@ -262,8 +262,9 @@ function toggleSec(el) {
   arrow.classList.toggle('collapsed');
 }
 
-function gmailUrl(id) {
-  return `https://mail.google.com/mail/u/0/#all/${id}`;
+function gmailUrl(m) {
+  const tid = m.threadId || m.id;
+  return `https://mail.google.com/mail/u/0/#all/${tid}`;
 }
 
 function renderLeadSection(label, items, cls) {
@@ -274,7 +275,7 @@ function renderLeadSection(label, items, cls) {
   </div>
   <div class="sec-items">`;
   for (const m of items) {
-    const url = m.id ? gmailUrl(m.id) : '#';
+    const url = m.id ? gmailUrl(m) : '#';
     html += `<a class="lead-item ${cls}" href="${url}" target="_blank" rel="noopener">
       <div class="lead-from">${m.from}</div>
       <div class="lead-subject">${m.subject}</div>

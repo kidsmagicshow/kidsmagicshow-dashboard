@@ -104,7 +104,7 @@ def gmail_get_msgs(svc, q, n=20):
             metadataHeaders=['From', 'Subject', 'Date']
         ).execute()
         h = {x['name']: x['value'] for x in data['payload']['headers']}
-        msgs.append({'id': m['id'], 'from': h.get('From', ''), 'subject': h.get('Subject', ''), 'date': h.get('Date', '')})
+        msgs.append({'id': m['id'], 'threadId': data.get('threadId', m['id']), 'from': h.get('From', ''), 'subject': h.get('Subject', ''), 'date': h.get('Date', '')})
     return msgs
 
 def gmail_count(svc, q):
