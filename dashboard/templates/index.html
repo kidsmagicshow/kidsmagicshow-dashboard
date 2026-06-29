@@ -202,6 +202,12 @@
 </div>
 
 <script>
+const _AUTH = '{{ auth_b64 }}';
+function apiFetch(url) {
+  const opts = _AUTH ? { headers: { 'Authorization': 'Basic ' + _AUTH } } : {};
+  return fetch(url, opts).then(r => r.json());
+}
+
 let timer = null;
 
 function fmt(str) {
@@ -266,7 +272,7 @@ async function loadLeads() {
   const body = document.getElementById('leads-body');
   const badge = document.getElementById('leads-badge');
   try {
-    const d = await fetch('/api/leads').then(r => r.json());
+    const d = await apiFetch('/api/leads');
     if (d.error) { body.innerHTML = `<div class="error">⚠ ${d.error}</div>`; badge.textContent = 'Fehler'; return; }
 
     const s = d.status || {};
@@ -295,7 +301,7 @@ async function loadAds() {
   const body = document.getElementById('ads-body');
   const badge = document.getElementById('ads-badge');
   try {
-    const d = await fetch('/api/ads').then(r => r.json());
+    const d = await apiFetch('/api/ads');
     if (d.error) { body.innerHTML = `<div class="error">⚠ ${d.error}</div>`; badge.textContent = 'Fehler'; return; }
     badge.textContent = `${d.total_cost} CHF`;
     let html = `<div class="stat-row">
@@ -324,7 +330,7 @@ async function loadWhatsApp() {
   const body = document.getElementById('wa-body');
   const badge = document.getElementById('wa-badge');
   try {
-    const d = await fetch('/api/whatsapp').then(r => r.json());
+    const d = await apiFetch('/api/whatsapp');
     if (d.error) { body.innerHTML = `<div class="error">⚠ ${d.error}</div>`; badge.textContent = 'Fehler'; return; }
 
     const s = d.summary || {};
@@ -373,7 +379,7 @@ async function loadCalendar() {
   const body = document.getElementById('cal-body');
   const badge = document.getElementById('cal-badge');
   try {
-    const d = await fetch('/api/calendar').then(r => r.json());
+    const d = await apiFetch('/api/calendar');
     if (d.error) { body.innerHTML = `<div class="error">⚠ ${d.error}</div>`; badge.textContent = 'Fehler'; return; }
     badge.textContent = `${d.events.length} Events`;
     if (!d.events.length) { body.innerHTML = '<div class="empty">Keine bevorstehenden Events</div>'; return; }
@@ -393,7 +399,7 @@ async function loadCalendar() {
 }
 
 function refresh() {
-  fetch('/api/refresh');
+  apiFetch('/api/refresh');
   loadLeads(); loadAds(); loadWhatsApp(); loadCalendar();
   document.getElementById('last-update').textContent =
     'Stand: ' + new Date().toLocaleTimeString('de-CH');

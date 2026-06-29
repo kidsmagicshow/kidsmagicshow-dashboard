@@ -115,7 +115,9 @@ def health():
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    import base64
+    auth_b64 = base64.b64encode(f'maksym:{DASHBOARD_PASSWORD}'.encode()).decode() if DASHBOARD_PASSWORD else ''
+    return render_template('index.html', auth_b64=auth_b64)
 
 @app.route('/api/ads')
 def api_ads():
