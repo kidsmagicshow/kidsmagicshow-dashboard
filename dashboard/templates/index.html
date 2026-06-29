@@ -114,9 +114,13 @@
 
   /* WhatsApp summary */
   .wa-summary { display: grid; grid-template-columns: repeat(4,1fr); gap: 6px; margin-bottom: 12px; }
-  .wa-sum-box { background: #1e1e35; border-radius: 7px; padding: 8px; text-align: center; }
+  .wa-sum-box { background: #1e1e35; border-radius: 7px; padding: 8px; text-align: center;
+                cursor: pointer; transition: background .15s, transform .1s; user-select: none; }
+  .wa-sum-box:hover { background: #252545; }
+  .wa-sum-box.active { outline: 2px solid #6c3fc7; background: #1e1e45; transform: scale(1.03); }
   .wa-sum-box .v { font-size: 1.2rem; font-weight: 800; }
   .wa-sum-box .l { font-size: .6rem; color: #888; margin-top: 1px; }
+  .wa-chat-hidden { display: none; }
 
   /* Calendar */
   .event-item { display: flex; gap: 10px; padding: 9px 0;
@@ -236,6 +240,21 @@ function ago(str) {
   } catch { return str.substring(0,10); }
 }
 
+let _waActiveFilter = null;
+function waFilter(type) {
+  const boxes = document.querySelectorAll('.wa-sum-box');
+  const items = document.querySelectorAll('.wa-item, a.wa-item');
+  if (_waActiveFilter === type) {
+    _waActiveFilter = null;
+    boxes.forEach(b => b.classList.remove('active'));
+    items.forEach(i => i.classList.remove('wa-chat-hidden'));
+  } else {
+    _waActiveFilter = type;
+    boxes.forEach(b => b.classList.toggle('active', b.dataset.type === type));
+    items.forEach(i => i.classList.toggle('wa-chat-hidden', i.dataset.watype !== type));
+  }
+}
+
 function toggleSec(el) {
   const items = el.nextElementSibling;
   const arrow = el.querySelector('.toggle-arrow');
@@ -338,12 +357,12 @@ async function loadWhatsApp() {
 
     let html = `<div class="wa-updated">Stand: ${updAgo} · WhatsApp wird von Claude aktualisiert</div>`;
 
-    // Summary counts
+    // Summary counts (clickable filters)
     html += `<div class="wa-summary">
-      <div class="wa-sum-box"><div class="v" style="color:#a07ae8">${s.partners||0}</div><div class="l">Partner</div></div>
-      <div class="wa-sum-box"><div class="v" style="color:#5dade2">${s.inquiries||0}</div><div class="l">Anfragen</div></div>
-      <div class="wa-sum-box"><div class="v" style="color:#2ecc71">${s.booked||0}</div><div class="l">Gebucht</div></div>
-      <div class="wa-sum-box"><div class="v" style="color:#e74c3c">${s.declined||0}</div><div class="l">Abgesagt</div></div>
+      <div class="wa-sum-box" onclick="waFilter('partner')" data-type="partner"><div class="v" style="color:#a07ae8">${s.partners||0}</div><div class="l">Partner</div></div>
+      <div class="wa-sum-box" onclick="waFilter('inquiry')" data-type="inquiry"><div class="v" style="color:#5dade2">${s.inquiries||0}</div><div class="l">Anfragen</div></div>
+      <div class="wa-sum-box" onclick="waFilter('booked')" data-type="booked"><div class="v" style="color:#2ecc71">${s.booked||0}</div><div class="l">Gebucht</div></div>
+      <div class="wa-sum-box" onclick="waFilter('declined')" data-type="declined"><div class="v" style="color:#e74c3c">${s.declined||0}</div><div class="l">Abgesagt</div></div>
     </div>`;
 
     // Sort by last_time desc
@@ -356,8 +375,8 @@ async function loadWhatsApp() {
       const isRealPhone = phone && /^\d{10,13}$/.test(phone);
       const waUrl = isRealPhone ? `https://wa.me/${phone}` : null;
       html += waUrl
-        ? `<a class="wa-item" href="${waUrl}" target="_blank" rel="noopener">`
-        : `<div class="wa-item">`;
+        ? `<a class="wa-item" href="${waUrl}" target="_blank" rel="noopener" data-watype="${c.type}">`
+        : `<div class="wa-item" data-watype="${c.type}">`;
       html += `
         <div class="wa-icon ${t.cls}">${t.icon}</div>
         <div class="wa-info" style="flex:1;min-width:0">
