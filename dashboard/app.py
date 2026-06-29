@@ -59,9 +59,11 @@ DASHBOARD_PASSWORD = os.environ.get('DASHBOARD_PASSWORD', '')
 def _check_auth(username, password):
     return username == 'maksym' and password == DASHBOARD_PASSWORD
 
+OPEN_PATHS = {'/health', '/api/whatsapp/update'}
+
 @app.before_request
 def require_auth():
-    if DASHBOARD_PASSWORD and request.path != '/health':
+    if DASHBOARD_PASSWORD and request.path not in OPEN_PATHS:
         auth = request.authorization
         if not auth or not _check_auth(auth.username, auth.password):
             return Response('Login required', 401,
