@@ -373,10 +373,8 @@ async function loadWhatsApp() {
       const fromMe = c.is_from_me ? '↗ ' : '';
       const phone = c.jid ? c.jid.replace('@s.whatsapp.net','').replace('@c.us','') : '';
       const isRealPhone = phone && /^\d{10,13}$/.test(phone);
-      const waUrl = isRealPhone ? `https://wa.me/${phone}` : null;
-      html += waUrl
-        ? `<a class="wa-item" href="${waUrl}" target="_blank" rel="noopener" data-watype="${c.type}">`
-        : `<div class="wa-item" data-watype="${c.type}">`;
+      const waUrl = isRealPhone ? `https://wa.me/${phone}` : 'https://web.whatsapp.com/';
+      html += `<a class="wa-item" href="${waUrl}" target="_blank" rel="noopener" data-watype="${c.type}">`;
       html += `
         <div class="wa-icon ${t.cls}">${t.icon}</div>
         <div class="wa-info" style="flex:1;min-width:0">
@@ -385,7 +383,7 @@ async function loadWhatsApp() {
           ${c.note ? `<div class="note">${c.note}</div>` : ''}
           <div class="wa-time">${ago(c.last_time)}</div>
         </div>
-      ${waUrl ? '</a>' : '</div>'}`;
+      </a>`;
     }
 
     if (!chats.length) html += '<div class="empty">Keine Business-Chats</div>';
