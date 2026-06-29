@@ -358,6 +358,7 @@ async function loadWhatsApp() {
       html += waUrl
         ? `<a class="wa-item" href="${waUrl}" target="_blank" rel="noopener">`
         : `<div class="wa-item">`;
+      html += `
         <div class="wa-icon ${t.cls}">${t.icon}</div>
         <div class="wa-info" style="flex:1;min-width:0">
           <div class="name">${c.name} <span style="font-size:.62rem;color:#555;font-weight:400">${t.label}</span></div>
