@@ -202,10 +202,8 @@
 </div>
 
 <script>
-const _AUTH = '{{ auth_b64 }}';
 function apiFetch(url) {
-  const opts = _AUTH ? { headers: { 'Authorization': 'Basic ' + _AUTH } } : {};
-  return fetch(url, opts).then(r => r.json());
+  return fetch(url).then(r => r.json());
 }
 
 let timer = null;
