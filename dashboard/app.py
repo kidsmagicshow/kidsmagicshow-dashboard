@@ -49,6 +49,10 @@ SKIP_SENDERS = [
     'do-not-reply', 'automated', 'alert@', 'security@', 'billing@',
 ]
 
+SKIP_DECLINED = [
+    'natalie.kohler@kita-avalon.ch',
+]
+
 # --- In-memory cache ---
 _cache = {}
 _wa_cache = {}  # WhatsApp cache (in-memory on cloud, file on local)
@@ -188,7 +192,7 @@ def api_leads():
                 'in:inbox (leider OR "kein Interesse" OR "other plans" OR absagen OR "no need" OR "not interested") newer_than:60d',
                 20
             )
-            declined = [r for r in raw_declined if is_real_lead(r)]
+            declined = [r for r in raw_declined if is_real_lead(r) and not any(s.lower() in r['from'].lower() for s in SKIP_DECLINED)]
 
             sent_count = gmail_count(
                 svc,
