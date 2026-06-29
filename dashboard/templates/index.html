@@ -203,7 +203,7 @@
 
 <script>
 function apiFetch(url) {
-  return fetch(url).then(r => r.json());
+  return fetch(url + '?t=' + Date.now(), {cache: 'no-store'}).then(r => r.json());
 }
 
 let timer = null;

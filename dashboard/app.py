@@ -8,6 +8,12 @@ from google.ads.googleads.client import GoogleAdsClient
 
 app = Flask(__name__)
 
+@app.after_request
+def no_cache(r):
+    r.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    r.headers['Pragma'] = 'no-cache'
+    return r
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CACHE_TTL = 300  # 5 min
 
