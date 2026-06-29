@@ -31,10 +31,17 @@ SCOPES = [
     'https://www.googleapis.com/auth/calendar.readonly',
 ]
 
-SKIP_SENDERS = ['google.com', 'galaxus', 'anthropic', 'paypal', 'meetup',
-                'penguinmagic', 'accounts.google', 'mailer-daemon', 'noreply',
-                'linkedin', 'facebook', 'instagram', 'twitter', 'postfinance',
-                'twint', 'microsoft', 'apple.com', 'amazon']
+SKIP_SENDERS = [
+    'google.com', 'accounts.google', 'mailer-daemon', 'noreply', 'no-reply',
+    'galaxus', 'anthropic', 'paypal', 'meetup', 'penguinmagic',
+    'linkedin', 'facebook', 'instagram', 'twitter', 'postfinance', 'twint',
+    'microsoft', 'apple.com', 'amazon', 'trustindex', 'trust-index',
+    'newsletter', 'notifications', 'mailchimp', 'sendgrid', 'mailjet', 'sendinblue',
+    'stripe', 'cloudflare', 'namecheap', 'hostinger', 'wix.com', 'wordpress',
+    'dropbox', 'notion', 'booking.com', 'eventim', 'ticketmaster',
+    'swisscom', 'sunrise', 'support@', 'info@google', 'donotreply',
+    'do-not-reply', 'automated', 'alert@', 'security@', 'billing@',
+]
 
 # --- In-memory cache ---
 _cache = {}
@@ -91,7 +98,7 @@ def gmail_get_msgs(svc, q, n=20):
             metadataHeaders=['From', 'Subject', 'Date']
         ).execute()
         h = {x['name']: x['value'] for x in data['payload']['headers']}
-        msgs.append({'from': h.get('From', ''), 'subject': h.get('Subject', ''), 'date': h.get('Date', '')})
+        msgs.append({'id': m['id'], 'from': h.get('From', ''), 'subject': h.get('Subject', ''), 'date': h.get('Date', '')})
     return msgs
 
 def gmail_count(svc, q):
@@ -154,24 +161,28 @@ def api_leads():
         try:
             svc = build('gmail', 'v1', credentials=get_creds())
 
-            inquiries = gmail_get_msgs(
+            def is_real_lead(m):
+                return not any(s.lower() in m['from'].lower() for s in SKIP_SENDERS)
+
+            raw_inquiries = gmail_get_msgs(
                 svc,
-                'in:inbox (Anfrage OR Geburtstag OR Zaubershow OR Buchung OR booking OR "magic show") newer_than:30d'
+                'in:inbox (Anfrage OR Geburtstag OR Zaubershow OR Buchung OR booking OR "magic show"'
+                ' OR Kooperation OR Kinderprogramm OR Abendshow OR Firmenfeier OR Kindergeburtstag) newer_than:30d'
             )
+            inquiries = [m for m in raw_inquiries if is_real_lead(m)]
+
             raw_replies = gmail_get_msgs(
                 svc,
                 'in:inbox (subject:Re: OR subject:AW: OR subject:RE:) newer_than:60d', 30
             )
-            replies = [r for r in raw_replies
-                       if not any(s.lower() in r['from'].lower() for s in SKIP_SENDERS)]
+            replies = [r for r in raw_replies if is_real_lead(r)]
 
             raw_declined = gmail_get_msgs(
                 svc,
                 'in:inbox (leider OR "kein Interesse" OR "other plans" OR absagen OR "no need" OR "not interested") newer_than:60d',
                 20
             )
-            declined = [r for r in raw_declined
-                        if not any(s.lower() in r['from'].lower() for s in SKIP_SENDERS)]
+            declined = [r for r in raw_declined if is_real_lead(r)]
 
             sent_count = gmail_count(
                 svc,

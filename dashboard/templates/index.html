@@ -72,10 +72,18 @@
   .sec { font-size: .67rem; font-weight: 700; text-transform: uppercase;
          letter-spacing: .8px; color: #666; margin: 10px 0 6px; }
   .sec:first-child { margin-top: 0; }
+  .sec-toggle { cursor: pointer; user-select: none; display: flex;
+                justify-content: space-between; align-items: center; }
+  .sec-toggle:hover { color: #aaa; }
+  .toggle-arrow { font-size: .7rem; transition: transform .2s; display: inline-block; }
+  .toggle-arrow.collapsed { transform: rotate(-90deg); }
+  .sec-items.collapsed { display: none; }
 
   /* Lead items */
   .lead-item { background: #1e1e35; border-radius: 7px; padding: 9px 11px;
-               margin-bottom: 5px; border-left: 3px solid #6c3fc7; }
+               margin-bottom: 5px; border-left: 3px solid #6c3fc7;
+               cursor: pointer; text-decoration: none; display: block; color: inherit; }
+  .lead-item:hover { background: #252540; }
   .lead-item.reply   { border-left-color: #2ecc71; }
   .lead-item.declined { border-left-color: #e74c3c; }
   .lead-from    { font-size: .76rem; font-weight: 600; color: #c0b0f0;
@@ -86,7 +94,9 @@
 
   /* WhatsApp chat items */
   .wa-item { background: #1e1e35; border-radius: 7px; padding: 9px 11px;
-             margin-bottom: 5px; display: flex; gap: 10px; align-items: flex-start; }
+             margin-bottom: 5px; display: flex; gap: 10px; align-items: flex-start;
+             cursor: pointer; text-decoration: none; color: inherit; }
+  .wa-item:hover { background: #252540; }
   .wa-icon { width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
              display: flex; align-items: center; justify-content: center;
              font-size: .85rem; font-weight: 700; }
@@ -222,6 +232,36 @@ function ago(str) {
   } catch { return str.substring(0,10); }
 }
 
+function toggleSec(el) {
+  const items = el.nextElementSibling;
+  const arrow = el.querySelector('.toggle-arrow');
+  items.classList.toggle('collapsed');
+  arrow.classList.toggle('collapsed');
+}
+
+function gmailUrl(id) {
+  return `https://mail.google.com/mail/u/0/#all/${id}`;
+}
+
+function renderLeadSection(label, items, cls) {
+  if (!items.length) return '';
+  let html = `<div class="sec sec-toggle" onclick="toggleSec(this)">
+    <span>${label} (${items.length})</span>
+    <span class="toggle-arrow">▼</span>
+  </div>
+  <div class="sec-items">`;
+  for (const m of items) {
+    const url = m.id ? gmailUrl(m.id) : '#';
+    html += `<a class="lead-item ${cls}" href="${url}" target="_blank" rel="noopener">
+      <div class="lead-from">${m.from}</div>
+      <div class="lead-subject">${m.subject}</div>
+      <div class="lead-date">${m.date.substring(0,16)}</div>
+    </a>`;
+  }
+  html += '</div>';
+  return html;
+}
+
 async function loadLeads() {
   const body = document.getElementById('leads-body');
   const badge = document.getElementById('leads-badge');
@@ -234,7 +274,6 @@ async function loadLeads() {
 
     let html = '';
 
-    // Status bar
     if (s.sent > 0) {
       html += `<div class="status-bar">
         <div class="status-box"><div class="val s-green">${s.replied||0}</div><div class="lbl">✅ Geantwortet</div></div>
@@ -243,41 +282,9 @@ async function loadLeads() {
       </div>`;
     }
 
-    // Direct inquiries
-    if ((d.inquiries||[]).length) {
-      html += `<div class="sec">🔔 Neue Anfragen (${d.inquiries.length})</div>`;
-      for (const m of d.inquiries) {
-        html += `<div class="lead-item">
-          <div class="lead-from">${m.from}</div>
-          <div class="lead-subject">${m.subject}</div>
-          <div class="lead-date">${m.date.substring(0,16)}</div>
-        </div>`;
-      }
-    }
-
-    // B2B replies
-    if ((d.replies||[]).length) {
-      html += `<div class="sec">✅ B2B Antworten (${d.replies.length})</div>`;
-      for (const m of d.replies) {
-        html += `<div class="lead-item reply">
-          <div class="lead-from">${m.from}</div>
-          <div class="lead-subject">${m.subject}</div>
-          <div class="lead-date">${m.date.substring(0,16)}</div>
-        </div>`;
-      }
-    }
-
-    // Declined
-    if ((d.declined||[]).length) {
-      html += `<div class="sec">❌ Abgesagt (${d.declined.length})</div>`;
-      for (const m of d.declined) {
-        html += `<div class="lead-item declined">
-          <div class="lead-from">${m.from}</div>
-          <div class="lead-subject">${m.subject}</div>
-          <div class="lead-date">${m.date.substring(0,16)}</div>
-        </div>`;
-      }
-    }
+    html += renderLeadSection('🔔 Neue Anfragen', d.inquiries||[], '');
+    html += renderLeadSection('✅ B2B Antworten', d.replies||[], 'reply');
+    html += renderLeadSection('❌ Abgesagt', d.declined||[], 'declined');
 
     if (!html) html = '<div class="empty">Keine Nachrichten</div>';
     body.innerHTML = html;
@@ -341,7 +348,9 @@ async function loadWhatsApp() {
     for (const c of chats) {
       const t = WA_TYPE[c.type] || WA_TYPE.inquiry;
       const fromMe = c.is_from_me ? '↗ ' : '';
-      html += `<div class="wa-item">
+      const phone = c.jid ? c.jid.replace('@s.whatsapp.net','').replace('@c.us','') : '';
+      const waUrl = phone ? `https://wa.me/${phone}` : '#';
+      html += `<a class="wa-item" href="${waUrl}" target="_blank" rel="noopener">
         <div class="wa-icon ${t.cls}">${t.icon}</div>
         <div class="wa-info" style="flex:1;min-width:0">
           <div class="name">${c.name} <span style="font-size:.62rem;color:#555;font-weight:400">${t.label}</span></div>
@@ -349,7 +358,7 @@ async function loadWhatsApp() {
           ${c.note ? `<div class="note">${c.note}</div>` : ''}
           <div class="wa-time">${ago(c.last_time)}</div>
         </div>
-      </div>`;
+      </a>`;
     }
 
     if (!chats.length) html += '<div class="empty">Keine Business-Chats</div>';
