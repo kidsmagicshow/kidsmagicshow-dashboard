@@ -135,6 +135,13 @@
   .ev-info .time  { font-size: .72rem; color: #888; margin-top: 1px; }
   .ev-info .loc   { font-size: .68rem; color: #7c5cbf; margin-top: 1px; }
 
+  .new-badge { display: inline-block; background: #e74c3c; color: #fff;
+               font-size: .58rem; font-weight: 800; padding: 1px 6px;
+               border-radius: 4px; margin-left: 5px; vertical-align: middle;
+               text-transform: uppercase; letter-spacing: .4px; }
+  .lead-item.is-new { border-left-color: #e74c3c; background: rgba(231,76,60,.07); }
+  .wa-item.is-new   { background: rgba(231,76,60,.07); }
+
   .empty { text-align: center; color: #444; font-size: .8rem; padding: 28px 0; }
   .error { color: #e74c3c; font-size: .78rem; padding: 10px; background: rgba(231,76,60,.1);
            border-radius: 7px; }
@@ -210,6 +217,15 @@ function apiFetch(url) {
   return fetch(url + '?t=' + Date.now(), {cache: 'no-store'}).then(r => r.json());
 }
 
+const _LV_KEY = 'kms_last_visit';
+const _lastVisit = localStorage.getItem(_LV_KEY) ? new Date(localStorage.getItem(_LV_KEY)) : null;
+localStorage.setItem(_LV_KEY, new Date().toISOString());
+
+function isNew(dateStr) {
+  if (!_lastVisit || !dateStr) return false;
+  try { return new Date(dateStr) > _lastVisit; } catch { return false; }
+}
+
 let timer = null;
 
 function fmt(str) {
@@ -269,15 +285,18 @@ function gmailUrl(m) {
 
 function renderLeadSection(label, items, cls) {
   if (!items.length) return '';
+  const newCount = items.filter(m => isNew(m.date)).length;
+  const newLabel = newCount ? ` <span class="new-badge">${newCount} neu</span>` : '';
   let html = `<div class="sec sec-toggle" onclick="toggleSec(this)">
-    <span>${label} (${items.length})</span>
+    <span>${label} (${items.length})${newLabel}</span>
     <span class="toggle-arrow">▼</span>
   </div>
   <div class="sec-items">`;
   for (const m of items) {
     const url = m.id ? gmailUrl(m) : '#';
-    html += `<a class="lead-item ${cls}" href="${url}" target="_blank" rel="noopener">
-      <div class="lead-from">${m.from}</div>
+    const n = isNew(m.date);
+    html += `<a class="lead-item ${cls}${n?' is-new':''}" href="${url}" target="_blank" rel="noopener">
+      <div class="lead-from">${m.from}${n?' <span class="new-badge">NEU</span>':''}</div>
       <div class="lead-subject">${m.subject}</div>
       <div class="lead-date">${m.date.substring(0,16)}</div>
     </a>`;
@@ -375,11 +394,12 @@ async function loadWhatsApp() {
       const phone = c.jid ? c.jid.replace('@s.whatsapp.net','').replace('@c.us','') : '';
       const isRealPhone = phone && /^\d{10,13}$/.test(phone);
       const waUrl = isRealPhone ? `https://wa.me/${phone}` : 'https://web.whatsapp.com/';
-      html += `<a class="wa-item" href="${waUrl}" target="_blank" rel="noopener" data-watype="${c.type}">`;
+      const waNew = isNew(c.last_time) && !c.is_from_me;
+      html += `<a class="wa-item${waNew?' is-new':''}" href="${waUrl}" target="_blank" rel="noopener" data-watype="${c.type}">`;
       html += `
         <div class="wa-icon ${t.cls}">${t.icon}</div>
         <div class="wa-info" style="flex:1;min-width:0">
-          <div class="name">${c.name} <span style="font-size:.62rem;color:#555;font-weight:400">${t.label}</span></div>
+          <div class="name">${c.name}${waNew?' <span class="new-badge">NEU</span>':''} <span style="font-size:.62rem;color:#555;font-weight:400">${t.label}</span></div>
           <div class="msg">${fromMe}${c.last_message || '—'}</div>
           ${c.note ? `<div class="note">${c.note}</div>` : ''}
           <div class="wa-time">${ago(c.last_time)}</div>
