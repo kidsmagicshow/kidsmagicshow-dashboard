@@ -5,8 +5,8 @@ from flask import Blueprint, jsonify, render_template, request
 bp = Blueprint('musicbox', __name__)
 
 GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent'
-FAST_MODEL = os.environ.get('GEMINI_FAST_MODEL', 'gemini-2.5-flash')
-SMART_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-2.5-flash')
+FAST_MODEL = os.environ.get('GEMINI_FAST_MODEL', 'gemini-3.8-flash')
+SMART_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-3.8-flash')
 
 _melody_cache = {}
 
