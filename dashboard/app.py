@@ -8,6 +8,9 @@ from google.ads.googleads.client import GoogleAdsClient
 
 app = Flask(__name__)
 
+from musicbox import bp as musicbox_bp
+app.register_blueprint(musicbox_bp)
+
 @app.after_request
 def no_cache(r):
     r.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
@@ -71,7 +74,7 @@ def _check_auth(username, password):
 
 @app.before_request
 def require_auth():
-    if DASHBOARD_PASSWORD and request.path == '/':
+    if DASHBOARD_PASSWORD and (request.path == '/' or request.path.startswith(('/shkatulka', '/api/musicbox'))):
         auth = request.authorization
         if not auth or not _check_auth(auth.username, auth.password):
             return Response('Login required', 401,
