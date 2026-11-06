@@ -1,100 +1,105 @@
-import os, json
-import anthropic
+import os, json, re
+import requests
 from flask import Blueprint, jsonify, render_template, request
 
 bp = Blueprint('musicbox', __name__)
 
-FAST_MODEL = os.environ.get('CLAUDE_FAST_MODEL', 'claude-haiku-5-5')
-SMART_MODEL = os.environ.get('CLAUDE_MODEL', 'claude-opus-5-5')
+GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent'
+FAST_MODEL = os.environ.get('GEMINI_FAST_MODEL', 'gemini-2.5-flash')
+SMART_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-2.5-flash')
 
-_client = None
 _melody_cache = {}
 
 
-class ClaudeError(Exception):
+class GeminiError(Exception):
     pass
 
 
-def client():
-    global _client
-    if not os.environ.get('ANTHROPIC_API_KEY'):
-        raise ClaudeError('На сервере не задан ключ ANTHROPIC_API_KEY.')
-    if _client is None:
-        _client = anthropic.Anthropic(timeout=120.0)
-    return _client
-
-
-def claude_json(model, prompt, schema, effort, fallback=False):
-    params = dict(
-        model=model,
-        max_tokens=16000,
-        output_config={'effort': effort, 'format': {'type': 'json_schema', 'schema': schema}},
-        messages=[{'role': 'user', 'content': prompt}],
-    )
+def gemini_json(model, prompt, schema, think=True, timeout=120):
+    key = os.environ.get('GEMINI_API_KEY', '')
+    if not key:
+        raise GeminiError('На сервере не задан ключ GEMINI_API_KEY.')
+    config = {'responseMimeType': 'application/json', 'responseSchema': schema, 'temperature': 0.2}
+    if not think:
+        config['thinkingConfig'] = {'thinkingBudget': 0}
     try:
-        if fallback:
-            r = client().beta.messages.create(betas=['server-side-fallback-2026-07-01'], fallbacks='default', **params)
-        else:
-            r = client().messages.create(**params)
-    except anthropic.AuthenticationError:
-        raise ClaudeError('Ключ ANTHROPIC_API_KEY не подходит.')
-    except anthropic.RateLimitError:
-        raise ClaudeError('Слишком много запросов подряд. Подожди минуту.')
-    except anthropic.APIStatusError as e:
-        raise ClaudeError(f'Claude ответил ошибкой {e.status_code}.')
-    except anthropic.APIConnectionError:
-        raise ClaudeError('Не удалось связаться с Claude.')
-    if r.stop_reason == 'refusal':
-        raise ClaudeError('Claude отказался отвечать на этот запрос.')
-    text = next((b.text for b in r.content if b.type == 'text'), '')
+        r = requests.post(
+            GEMINI_URL.format(model),
+            headers={'x-goog-api-key': key},
+            json={'contents': [{'role': 'user', 'parts': [{'text': prompt}]}], 'generationConfig': config},
+            timeout=timeout,
+        )
+    except requests.RequestException:
+        raise GeminiError('Не удалось связаться с Gemini.')
+    if r.status_code in (401, 403):
+        raise GeminiError('Ключ GEMINI_API_KEY не подходит.')
+    if r.status_code == 429:
+        raise GeminiError('Слишком много запросов подряд. Подожди минуту.')
+    if r.status_code != 200:
+        raise GeminiError(f'Gemini ответил ошибкой {r.status_code}.')
     try:
-        return json.loads(text)
-    except ValueError:
-        raise ClaudeError('Claude вернул непонятный ответ.')
+        content = r.json()['candidates'][0]['content']['parts']
+        text = ''.join(p.get('text', '') for p in content if not p.get('thought'))
+        data = json.loads(re.sub(r'^```(?:json)?|```$', '', text.strip()).strip())
+    except (KeyError, IndexError, ValueError):
+        raise GeminiError('Gemini вернул непонятный ответ.')
+    return data if isinstance(data, dict) else {}
 
 
 IDENTIFY_SCHEMA = {
-    'type': 'object',
+    'type': 'OBJECT',
     'properties': {
-        'title': {'type': 'string'},
-        'artist': {'type': 'string'},
-        'sure': {'type': 'boolean'},
+        'title': {'type': 'STRING'},
+        'artist': {'type': 'STRING'},
+        'sure': {'type': 'BOOLEAN'},
     },
     'required': ['title', 'artist', 'sure'],
-    'additionalProperties': False,
+    'propertyOrdering': ['title', 'artist', 'sure'],
 }
 
 MELODY_SCHEMA = {
-    'type': 'object',
+    'type': 'OBJECT',
     'properties': {
-        'title': {'type': 'string'},
-        'artist': {'type': 'string'},
-        'part': {'type': 'string'},
-        'bpm': {'type': 'number'},
-        'beatsPerBar': {'type': 'integer', 'enum': [2, 3, 4, 6]},
-        'confidence': {'type': 'string', 'enum': ['high', 'medium', 'low']},
+        'title': {'type': 'STRING'},
+        'artist': {'type': 'STRING'},
+        'part': {'type': 'STRING'},
+        'bpm': {'type': 'NUMBER'},
+        'beatsPerBar': {'type': 'INTEGER'},
+        'confidence': {'type': 'STRING', 'enum': ['high', 'medium', 'low']},
         'notes': {
-            'type': 'array',
+            'type': 'ARRAY',
             'items': {
-                'type': 'object',
-                'properties': {'pitch': {'type': 'integer'}, 'start': {'type': 'number'}, 'duration': {'type': 'number'}},
+                'type': 'OBJECT',
+                'properties': {'pitch': {'type': 'INTEGER'}, 'start': {'type': 'NUMBER'}, 'duration': {'type': 'NUMBER'}},
                 'required': ['pitch', 'start', 'duration'],
-                'additionalProperties': False,
+                'propertyOrdering': ['pitch', 'start', 'duration'],
             },
         },
         'bass': {
-            'type': 'array',
+            'type': 'ARRAY',
             'items': {
-                'type': 'object',
-                'properties': {'pitch': {'type': 'integer'}, 'start': {'type': 'number'}},
+                'type': 'OBJECT',
+                'properties': {'pitch': {'type': 'INTEGER'}, 'start': {'type': 'NUMBER'}},
                 'required': ['pitch', 'start'],
-                'additionalProperties': False,
+                'propertyOrdering': ['pitch', 'start'],
             },
         },
     },
     'required': ['title', 'artist', 'part', 'bpm', 'beatsPerBar', 'confidence', 'notes', 'bass'],
-    'additionalProperties': False,
+    'propertyOrdering': ['title', 'artist', 'part', 'bpm', 'beatsPerBar', 'confidence', 'notes', 'bass'],
 }
+
+
+def _num(x):
+    return isinstance(x, (int, float)) and not isinstance(x, bool)
+
+
+def _rows(items, fields):
+    out = []
+    for it in items if isinstance(items, list) else []:
+        if isinstance(it, dict) and all(_num(it.get(f)) for f in fields):
+            out.append([it[f] for f in fields])
+    return out
 
 
 @bp.route('/shkatulka')
@@ -118,10 +123,12 @@ def identify():
         'sure равно true, только если ты уверен в песне.',
     ])
     try:
-        g = claude_json(FAST_MODEL, prompt, IDENTIFY_SCHEMA, 'low')
-    except ClaudeError as e:
+        g = gemini_json(FAST_MODEL, prompt, IDENTIFY_SCHEMA, think=False, timeout=40)
+    except GeminiError as e:
         return jsonify({'error': str(e)}), 502
-    return jsonify({'title': g['title'].strip(), 'artist': g['artist'].strip(), 'sure': bool(g['sure'] and g['title'].strip())})
+    title = str(g.get('title') or '').strip()
+    artist = str(g.get('artist') or '').strip()
+    return jsonify({'title': title, 'artist': artist, 'sure': bool(g.get('sure') is True and title)})
 
 
 @bp.route('/api/musicbox/melody', methods=['POST'])
@@ -140,26 +147,27 @@ def melody():
         'notes: pitch — высота по стандарту MIDI в тональности оригинала, start — начало в долях от 0, duration — длительность в долях.',
         'Четвертная нота равна 1 доле. Мелодия одноголосная, ноты не перекрываются.',
         'bass: основной тон аккорда на сильных долях, pitch от 36 до 55.',
+        'beatsPerBar: 2, 3, 4 или 6.',
         'part: какая это часть песни, по-русски, например "припев".',
         'confidence: "high", если уверен в нотах; "medium", если примерно; "low", если песню плохо знаешь.',
     ])
     try:
-        r = claude_json(SMART_MODEL, prompt, MELODY_SCHEMA, 'high', fallback=True)
-    except ClaudeError as e:
+        r = gemini_json(SMART_MODEL, prompt, MELODY_SCHEMA)
+    except GeminiError as e:
         return jsonify({'error': str(e)}), 502
-    notes = [[n['pitch'], n['start'], n['duration']] for n in r['notes']
-             if 20 < n['pitch'] < 110 and n['start'] >= 0 and n['duration'] > 0]
+    notes = [n for n in _rows(r.get('notes'), ('pitch', 'start', 'duration'))
+             if 20 < n[0] < 110 and n[1] >= 0 and n[2] > 0]
     if len(notes) < 4:
         return jsonify({'error': 'Мелодию записать не удалось. Попробуй другую песню.'}), 502
     result = {
-        'title': r['title'] or title,
-        'artist': r['artist'] or artist,
-        'part': r['part'],
-        'bpm': r['bpm'] if r['bpm'] > 0 else 100,
-        'beatsPerBar': r['beatsPerBar'],
-        'confidence': r['confidence'],
+        'title': str(r.get('title') or title),
+        'artist': str(r.get('artist') or artist),
+        'part': str(r.get('part') or ''),
+        'bpm': r['bpm'] if _num(r.get('bpm')) and r['bpm'] > 0 else 100,
+        'beatsPerBar': r.get('beatsPerBar') if r.get('beatsPerBar') in (2, 3, 4, 6) else 4,
+        'confidence': r.get('confidence') if r.get('confidence') in ('high', 'medium', 'low') else 'medium',
         'notes': notes,
-        'bass': [[b['pitch'], b['start']] for b in r['bass'] if 20 < b['pitch'] < 110 and b['start'] >= 0],
+        'bass': [b for b in _rows(r.get('bass'), ('pitch', 'start')) if 20 < b[0] < 110 and b[1] >= 0],
     }
     _melody_cache[key] = result
     return jsonify(result)
