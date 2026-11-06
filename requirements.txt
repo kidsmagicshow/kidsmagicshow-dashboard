@@ -5,3 +5,4 @@ google-auth==2.55.1
 google-auth-httplib2==0.4.0
 google-auth-oauthlib==1.4.0
 requests==2.34.2
+anthropic==2.6.0

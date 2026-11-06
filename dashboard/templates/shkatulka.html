@@ -117,9 +117,7 @@ details li { margin-bottom: 6px; }
 .rec .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--bad); animation: pulse 1s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: 0.25; transform: scale(0.8); } }
 @media (prefers-reduced-motion: reduce) { .rec .dot { animation: none; } }
-.heard { font-size: 1.1rem; min-height: 1.5em; overflow-wrap: anywhere; }
-.heard .interim { color: var(--muted); }
-.guess { font-weight: 700; color: var(--muted); min-height: 1.4em; }
+.guess { font-weight: 700; font-size: 1.1rem; color: var(--muted); min-height: 1.4em; overflow-wrap: anywhere; }
 .guess.ok { color: var(--ok); }
 .guess.warn { color: var(--warn); }
 </style>
@@ -181,8 +179,7 @@ details li { margin-bottom: 6px; }
         </label>
       </div>
       <div class="listen-panel" id="listenPanel" hidden>
-        <div class="rec" id="rec" hidden><span class="dot"></span><span id="recLabel">Слушаю…</span></div>
-        <div class="heard" id="heard"></div>
+        <div class="rec" id="rec" hidden><span class="dot"></span><span>Слушаю…</span></div>
         <div class="guess" id="guess"></div>
       </div>
       <div class="status" id="aiStatus"></div>
@@ -706,14 +703,17 @@ $('midiFile').addEventListener('change', async e => {
 $('fragNext').addEventListener('click', () => { if (!midi) return; midi.idx = (midi.idx + 1) % midi.frags.length; setSong(songFromMidi()); });
 $('fragBars').addEventListener('change', () => { if (!midi) return; rebuildFrags(); setSong(songFromMidi()); });
 
-/* ---------- Голос и Gemini ---------- */
+/* ---------- Голос и Claude ---------- */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let listening = false, rec = null, finals = '', interim = '';
 let guessTimer = 0, guessCtl = null, lastGuess = null, lastGuessText = '';
-let media = null, stream = null, chunks = [];
 
 try { const l = localStorage.getItem('mb-lang'); if (l) $('lang').value = l; } catch (_) {}
 $('lang').addEventListener('change', () => { try { localStorage.setItem('mb-lang', $('lang').value); } catch (_) {} });
+if (!SR) {
+  $('listenBtn').disabled = true;
+  setStatus('Этот браузер не умеет слушать. Открой страницу в Safari или Chrome.', true);
+}
 
 async function api(path, body, signal) {
   let r;
@@ -731,14 +731,6 @@ async function api(path, body, signal) {
 
 function setStatus(t, err) { const st = $('aiStatus'); st.textContent = t; st.classList.toggle('err', !!err); }
 
-function showHeard() {
-  const h = $('heard'); h.textContent = '';
-  if (!finals && !interim) { h.textContent = 'Говори…'; return; }
-  const a = document.createElement('span'); a.textContent = finals ? finals + ' ' : '';
-  const b = document.createElement('span'); b.className = 'interim'; b.textContent = interim;
-  h.append(a, b);
-}
-
 function showGuess(g, pending) {
   const el = $('guess'); el.className = 'guess';
   if (pending) { el.textContent = 'Думаю…'; return; }
@@ -747,9 +739,11 @@ function showGuess(g, pending) {
   el.textContent = (g.sure ? 'Поняла: ' : 'Может быть: ') + '«' + g.title + '»' + (g.artist ? ', ' + g.artist : '');
 }
 
+function heardText() { return (finals + ' ' + interim).trim(); }
+
 function scheduleGuess() {
   clearTimeout(guessTimer);
-  const text = (finals + ' ' + interim).trim();
+  const text = heardText();
   if (text.length < 4 || text === lastGuessText) return;
   guessTimer = setTimeout(() => runGuess(text), 900);
 }
@@ -767,27 +761,20 @@ async function runGuess(text) {
   }
 }
 
-function setListeningUI(on, label) {
+function setListeningUI(on) {
   listening = on;
   $('listenBtn').textContent = on ? 'Закончить' : 'Слушать';
   $('listenBtn').classList.toggle('on', on);
   $('listenPanel').hidden = false;
   $('rec').hidden = !on;
-  if (label) $('recLabel').textContent = label;
-}
-
-function micDenied() {
-  setListeningUI(false);
-  setStatus('Нет доступа к микрофону. Разреши микрофон для этого сайта в настройках браузера.', true);
 }
 
 function startListening() {
   audio();
   finals = ''; interim = ''; lastGuess = null; lastGuessText = '';
   clearTimeout(guessTimer); if (guessCtl) guessCtl.abort();
-  $('guess').textContent = ''; $('guess').className = 'guess';
+  const el = $('guess'); el.className = 'guess'; el.textContent = 'Говори…';
   setStatus('');
-  if (!SR) { startRecorder(); return; }
   const r = rec = new SR();
   r.lang = $('lang').value; r.continuous = true; r.interimResults = true;
   r.onresult = e => {
@@ -796,17 +783,20 @@ function startListening() {
       const t = e.results[i][0].transcript;
       if (e.results[i].isFinal) finals = (finals + ' ' + t).trim(); else interim += t;
     }
-    showHeard(); scheduleGuess();
+    scheduleGuess();
   };
-  r.onerror = e => { if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { rec = null; micDenied(); } };
+  r.onerror = e => {
+    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+      rec = null; setListeningUI(false);
+      setStatus('Нет доступа к микрофону. Разреши микрофон для этого сайта в настройках браузера.', true);
+    }
+  };
   r.onend = () => { if (listening && rec === r) { try { r.start(); } catch (_) {} } };
   try { r.start(); } catch (_) { rec = null; setStatus('Не получилось включить микрофон.', true); return; }
-  setListeningUI(true, 'Слушаю…');
-  showHeard();
+  setListeningUI(true);
 }
 
 async function stopListening() {
-  if (media) { stopRecorder(); return; }
   const r = rec; rec = null;
   setListeningUI(false);
   if (r) {
@@ -816,59 +806,35 @@ async function stopListening() {
       try { r.stop(); } catch (_) { clearTimeout(done); res(); }
     });
   }
-  const text = (finals + ' ' + interim).trim();
-  interim = ''; finals = text; showHeard();
-  if (!text) { setStatus('Я ничего не услышала. Нажми «Слушать» и скажи ещё раз.', true); return; }
-  findAndLoad({ text });
+  const text = heardText();
+  if (!text) { $('guess').textContent = ''; setStatus('Я ничего не услышала. Нажми «Слушать» и скажи ещё раз.', true); return; }
+  findAndLoad(text);
 }
 
-async function startRecorder() {
-  if (!navigator.mediaDevices || !window.MediaRecorder) { setStatus('Этот браузер не умеет слушать. Открой страницу в Safari или Chrome.', true); return; }
-  try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); } catch (_) { micDenied(); return; }
-  chunks = [];
-  media = new MediaRecorder(stream);
-  media.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
-  media.start();
-  setListeningUI(true, 'Слушаю… Что я поняла, появится, когда закончишь.');
-  $('heard').textContent = '';
-}
-
-async function stopRecorder() {
-  const m = media; media = null;
-  setListeningUI(false);
-  await new Promise(res => { m.onstop = res; m.stop(); });
-  stream.getTracks().forEach(t => t.stop()); stream = null;
-  const blob = new Blob(chunks, { type: m.mimeType || 'audio/webm' });
-  if (blob.size < 2000) { setStatus('Я ничего не услышала. Нажми «Слушать» и скажи ещё раз.', true); return; }
-  const b64 = await new Promise(res => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1] || ''); fr.readAsDataURL(blob); });
-  findAndLoad({ audio: b64, mime: (blob.type || 'audio/webm').split(';')[0] });
-}
-
-async function findAndLoad(input) {
+async function findAndLoad(text) {
   $('listenBtn').disabled = true; $('aiBtn').disabled = true;
   clearTimeout(guessTimer);
   try {
-    let g = input.text && input.text === lastGuessText ? lastGuess : null;
+    let g = text === lastGuessText ? lastGuess : null;
     if (!g) {
       if (guessCtl) guessCtl.abort();
       setStatus('Угадываю песню…'); showGuess(null, true);
-      g = await api('/api/musicbox/identify', input);
+      g = await api('/api/musicbox/identify', { text });
       showGuess(g);
-      if (g.heard) $('heard').textContent = g.heard;
     }
-    if (!g.title) { setStatus('Не поняла, что за песня. Скажи название или исполнителя.', true); return; }
+    if (!g.title) { setStatus('Не поняла, что за песня. Я услышала: «' + text + '». Скажи название или исполнителя.', true); return; }
     setStatus('Записываю мелодию для шкатулки… Это может занять до минуты.');
     const r = await api('/api/musicbox/melody', { title: g.title, artist: g.artist || '' });
     const conf = r.confidence === 'high' ? ['уверенно', 'ok'] : r.confidence === 'low' ? ['неуверенно', 'bad'] : ['примерно', 'warn'];
-    setSong(toSong({ title: r.title + (r.artist ? ' — ' + r.artist : ''), bpm: r.bpm, barBeats: r.beatsPerBar, notes: r.notes, bass: r.bass },
-      { kind: 'ai', sourceLabel: 'Gemini: ' + conf[0], sourceClass: conf[1], extra: r.part || '' }));
     midi = null;
+    setSong(toSong({ title: r.title + (r.artist ? ' — ' + r.artist : ''), bpm: r.bpm, barBeats: r.beatsPerBar, notes: r.notes, bass: r.bass },
+      { kind: 'ai', sourceLabel: 'Claude: ' + conf[0], sourceClass: conf[1], extra: r.part || '' }));
     setStatus('Готово. Крути ручку.');
     document.querySelector('.stage').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
   } catch (e) {
     setStatus(e.message || 'Что-то пошло не так. Попробуй ещё раз.', true);
   } finally {
-    $('listenBtn').disabled = false; $('aiBtn').disabled = false;
+    $('listenBtn').disabled = !SR; $('aiBtn').disabled = false;
   }
 }
 
@@ -878,8 +844,9 @@ $('aiForm').addEventListener('submit', e => {
   const q = $('q').value.trim();
   if (!q) { setStatus('Напиши название песни.', true); return; }
   $('q').blur();
-  $('listenPanel').hidden = true;
-  findAndLoad({ text: q });
+  $('listenPanel').hidden = false;
+  lastGuess = null; lastGuessText = '';
+  findAndLoad(q);
 });
 
 /* ---------- Настройки ---------- */
