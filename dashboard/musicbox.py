@@ -20,8 +20,8 @@ def gemini_json(model, prompt, schema, think=True, timeout=120):
     if not key:
         raise GeminiError('На сервере не задан ключ GEMINI_API_KEY.')
     config = {'responseMimeType': 'application/json', 'responseSchema': schema, 'temperature': 0.2}
-    if not think:
-        config['thinkingConfig'] = {'thinkingBudget': 0}
+    # без ограничения Gemini думает над нотами больше минуты
+    config['thinkingConfig'] = {'thinkingBudget': 2048 if think else 0}
     try:
         r = requests.post(
             GEMINI_URL.format(model),
@@ -63,6 +63,7 @@ MELODY_SCHEMA = {
         'title': {'type': 'STRING'},
         'artist': {'type': 'STRING'},
         'part': {'type': 'STRING'},
+        'hook': {'type': 'STRING'},
         'bpm': {'type': 'NUMBER'},
         'beatsPerBar': {'type': 'INTEGER'},
         'confidence': {'type': 'STRING', 'enum': ['high', 'medium', 'low']},
@@ -70,9 +71,9 @@ MELODY_SCHEMA = {
             'type': 'ARRAY',
             'items': {
                 'type': 'OBJECT',
-                'properties': {'pitch': {'type': 'INTEGER'}, 'start': {'type': 'NUMBER'}, 'duration': {'type': 'NUMBER'}},
-                'required': ['pitch', 'start', 'duration'],
-                'propertyOrdering': ['pitch', 'start', 'duration'],
+                'properties': {'syl': {'type': 'STRING'}, 'pitch': {'type': 'INTEGER'}, 'start': {'type': 'NUMBER'}, 'duration': {'type': 'NUMBER'}},
+                'required': ['syl', 'pitch', 'start', 'duration'],
+                'propertyOrdering': ['syl', 'pitch', 'start', 'duration'],
             },
         },
         'bass': {
@@ -85,8 +86,8 @@ MELODY_SCHEMA = {
             },
         },
     },
-    'required': ['title', 'artist', 'part', 'bpm', 'beatsPerBar', 'confidence', 'notes', 'bass'],
-    'propertyOrdering': ['title', 'artist', 'part', 'bpm', 'beatsPerBar', 'confidence', 'notes', 'bass'],
+    'required': ['title', 'artist', 'part', 'hook', 'bpm', 'beatsPerBar', 'confidence', 'notes', 'bass'],
+    'propertyOrdering': ['title', 'artist', 'part', 'hook', 'bpm', 'beatsPerBar', 'confidence', 'notes', 'bass'],
 }
 
 
@@ -144,6 +145,9 @@ def melody():
     prompt = '\n'.join([
         f'Ты музыкальный аранжировщик. Песня: "{title}"' + (f', исполнитель {artist}.' if artist else '.'),
         'Запиши мелодию самого известного, узнаваемого куска песни — того, который все сразу узнают и напевают (главный припев, известный рифф или тема). Не бери вступление или куплет, если их узнают хуже. Длина 4–8 тактов, начни с начала фразы этого куска.',
+        'Сначала в hook напиши слова этого куска так, как их поют. Если это инструментальная тема или рифф, напиши в hook её название.',
+        'Потом запиши notes строго по этим словам: одна нота на каждый слог по порядку, в syl — этот слог. Если на слог поётся несколько нот, у следующих нот syl равен "-". У инструментальной темы syl всегда "-".',
+        'Ритм и высоты как в оригинале, чтобы мелодию узнали с первых нот.',
         'notes: pitch — высота по стандарту MIDI в тональности оригинала, start — начало в долях от 0, duration — длительность в долях.',
         'Четвертная нота равна 1 доле. Мелодия одноголосная, ноты не перекрываются.',
         'bass: основной тон аккорда на сильных долях, pitch от 36 до 55.',
