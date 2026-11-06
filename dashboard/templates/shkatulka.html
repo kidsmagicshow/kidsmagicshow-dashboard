@@ -1,0 +1,869 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Шкатулка желаний</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Yeseva+One&family=Manrope:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one column like the lid of a box — drum strip on top, crank below, sources and settings as a stack */
+:root {
+  --bg: #ECEAE4;
+  --surface: #F7F5F0;
+  --ink: #2A211A;
+  --muted: #6D6258;
+  --line: #D6D0C4;
+  --brass: #A06A12;
+  --brass-soft: #E9D7B2;
+  --pin: #7A4A12;
+  --pin-done: #C9B9A0;
+  --wood: #5A3A22;
+  --ok: #2F7A4A;
+  --warn: #A5631B;
+  --bad: #A33A2A;
+  --display: "Yeseva One", "Georgia", serif;
+  --body: "Manrope", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #17120E; --surface: #211A14; --ink: #EFE6DA; --muted: #A99C8D; --line: #3A2F25;
+    --brass: #D9A441; --brass-soft: #4A3818; --pin: #E8B85A; --pin-done: #5C4C3B; --wood: #C49A6C;
+    --ok: #6CC08A; --warn: #E3A35A; --bad: #E07A68; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #17120E; --surface: #211A14; --ink: #EFE6DA; --muted: #A99C8D; --line: #3A2F25;
+  --brass: #D9A441; --brass-soft: #4A3818; --pin: #E8B85A; --pin-done: #5C4C3B; --wood: #C49A6C;
+  --ok: #6CC08A; --warn: #E3A35A; --bad: #E07A68; color-scheme: dark;
+}
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.5; }
+.wrap {
+  max-width: 760px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 48px;
+  display: flex; flex-direction: column; gap: 20px;
+}
+h1 { font-family: var(--display); font-weight: 400; font-size: 2.1rem; line-height: 1.1; margin: 0; text-wrap: balance; }
+h2 { font-family: var(--display); font-weight: 400; font-size: 1.25rem; margin: 0; }
+.lead { margin: 6px 0 0; color: var(--muted); max-width: 60ch; }
+.label { font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+
+.stage { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+#drum { width: 100%; height: 190px; display: block; border-radius: 8px; }
+.crank-row { display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: center; }
+#crank { width: 220px; height: 220px; display: block; touch-action: none; cursor: grab; }
+#crank:active { cursor: grabbing; }
+.readout { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.big { font-family: var(--mono); font-size: 1.9rem; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1; }
+.small { font-family: var(--mono); font-size: 0.85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.hint { margin: 0; color: var(--brass); font-weight: 700; }
+@media (max-width: 520px) {
+  .crank-row { grid-template-columns: 1fr; justify-items: center; }
+  .readout { align-items: center; text-align: center; }
+}
+
+.now { display: flex; flex-direction: column; gap: 6px; }
+.now-title { font-family: var(--display); font-size: 1.4rem; line-height: 1.2; overflow-wrap: anywhere; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-size: 0.78rem; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.chip.ok { color: var(--ok); border-color: currentColor; }
+.chip.warn { color: var(--warn); border-color: currentColor; }
+.chip.bad { color: var(--bad); border-color: currentColor; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+.sources { display: flex; flex-direction: column; gap: 0; border-top: 1px solid var(--line); }
+.src { padding-block: 16px; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; }
+.src p { margin: 0; color: var(--muted); max-width: 62ch; }
+
+button, .filebtn {
+  font: inherit; font-weight: 700; font-size: 0.92rem; color: var(--ink);
+  background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+  padding: 8px 14px; cursor: pointer;
+}
+button:hover, .filebtn:hover { border-color: var(--brass); }
+button.primary { background: var(--brass); border-color: var(--brass); color: var(--bg); }
+button:disabled { opacity: 0.5; cursor: default; }
+button:focus-visible, input:focus-visible, select:focus-visible, .filebtn:focus-within { outline: 2px solid var(--brass); outline-offset: 2px; }
+input[type="text"] {
+  font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line);
+  border-radius: 8px; padding: 8px 12px; flex: 1 1 220px; min-width: 0;
+}
+select { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+input[type="range"] { accent-color: var(--brass); flex: 1 1 140px; min-width: 0; }
+input[type="checkbox"] { accent-color: var(--brass); width: 18px; height: 18px; }
+.filebtn input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.status { font-size: 0.9rem; min-height: 1.4em; color: var(--muted); }
+.status.err { color: var(--bad); }
+
+.settings { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px 20px; }
+.set { display: flex; flex-direction: column; gap: 6px; }
+.check { display: flex; gap: 8px; align-items: center; }
+
+details { border-top: 1px solid var(--line); padding-top: 12px; }
+summary { cursor: pointer; font-weight: 700; }
+details ol, details ul { padding-left: 1.2em; color: var(--muted); max-width: 64ch; }
+details li { margin-bottom: 6px; }
+[hidden] { display: none !important; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+.listen { min-width: 9.5em; padding: 12px 18px; font-size: 1rem; }
+.listen.on { background: var(--bad); border-color: var(--bad); color: var(--bg); }
+.listen-panel { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; background: var(--surface); }
+.rec { display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--bad); }
+.rec .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--bad); animation: pulse 1s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: 0.25; transform: scale(0.8); } }
+@media (prefers-reduced-motion: reduce) { .rec .dot { animation: none; } }
+.guess { font-weight: 700; font-size: 1.1rem; color: var(--muted); min-height: 1.4em; overflow-wrap: anywhere; }
+.guess.ok { color: var(--ok); }
+.guess.warn { color: var(--warn); }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header>
+    <h1>Шкатулка желаний</h1>
+    <p class="lead">Тестовый стенд без железа. Выбери мелодию и крути ручку по часовой стрелке. Темп идёт от твоей руки, а высота звука не меняется, как у настоящей шкатулки.</p>
+  </header>
+
+  <section class="stage" aria-label="Шкатулка">
+    <canvas id="drum" aria-label="Барабан со штифтами"></canvas>
+    <div class="crank-row">
+      <canvas id="crank" aria-label="Ручка шкатулки. Крути по часовой стрелке"></canvas>
+      <div class="readout">
+        <div>
+          <div class="label">Темп сейчас</div>
+          <div class="big" id="tempo">0</div>
+          <div class="small">ударов в минуту</div>
+        </div>
+        <div>
+          <div class="label">Где мы</div>
+          <div class="small" id="pos">такт 1 из 1</div>
+        </div>
+        <p class="hint" id="hint">Крути ручку по часовой стрелке</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="now" aria-live="polite">
+    <div class="label">Сейчас в шкатулке</div>
+    <div class="now-title" id="nowTitle">—</div>
+    <div class="chips" id="nowChips"></div>
+    <div class="row" id="fragRow" hidden>
+      <button id="fragNext" type="button">Другой фрагмент</button>
+      <label class="check">длина
+        <select id="fragBars">
+          <option value="4">4 такта</option>
+          <option value="8" selected>8 тактов</option>
+          <option value="16">16 тактов</option>
+        </select>
+      </label>
+    </div>
+  </section>
+
+  <section class="sources">
+    <div class="src">
+      <h2>Скажи песню</h2>
+      <p>Нажми «Слушать» и скажи своими словами, что за песня. Например: «песня Пинк Флойд, там что-то про брик». Пока ты говоришь, шкатулка показывает, поняла она или нет. Когда закончишь, нажми ещё раз.</p>
+      <div class="row">
+        <button class="primary listen" type="button" id="listenBtn">Слушать</button>
+        <label class="check">язык
+          <select id="lang">
+            <option value="ru-RU">русский</option>
+            <option value="de-CH">немецкий</option>
+            <option value="en-US">английский</option>
+          </select>
+        </label>
+      </div>
+      <div class="listen-panel" id="listenPanel" hidden>
+        <div class="rec" id="rec" hidden><span class="dot"></span><span>Слушаю…</span></div>
+        <div class="guess" id="guess"></div>
+      </div>
+      <div class="status" id="aiStatus"></div>
+      <form class="row" id="aiForm">
+        <input type="text" id="q" placeholder="Или напиши название" autocomplete="off" enterkeyhint="go">
+        <button type="submit" id="aiBtn">Угадать</button>
+      </form>
+    </div>
+
+    <div class="src">
+      <h2>Примеры</h2>
+      <div class="row" id="demos"></div>
+    </div>
+
+    <div class="src">
+      <h2>Миди-файл</h2>
+      <p>Скачай миди любой песни с сайта с миди-файлами и открой его здесь. Стенд сам найдёт мелодию среди всех инструментов, выберет повторяющуюся часть, обычно припев, и переложит её для шкатулки.</p>
+      <div class="row">
+        <label class="filebtn">Открыть миди-файл<input type="file" id="midiFile" accept=".mid,.midi,audio/midi,audio/x-midi"></label>
+      </div>
+      <div class="status" id="midiStatus"></div>
+    </div>
+  </section>
+
+  <section class="settings" aria-label="Настройки">
+    <div class="set">
+      <span class="label">Долей на один оборот</span>
+      <select id="bpr">
+        <option value="1">1 доля</option>
+        <option value="2" selected>2 доли</option>
+        <option value="3">3 доли</option>
+        <option value="4">4 доли</option>
+      </select>
+    </div>
+    <div class="set">
+      <span class="label">Крутить автоматически</span>
+      <label class="check"><input type="checkbox" id="auto"> включить</label>
+      <div class="row"><input type="range" id="speed" min="0.2" max="2.5" step="0.05" value="0.8" aria-label="Скорость"><span class="small" id="speedVal">0,8 об/с</span></div>
+    </div>
+    <div class="set">
+      <span class="label">Звучание</span>
+      <label class="check"><input type="checkbox" id="useBass" checked> бас</label>
+      <label class="check"><input type="checkbox" id="useTrem" checked> повторы на длинных нотах</label>
+      <label class="check"><input type="checkbox" id="loop" checked> играть по кругу</label>
+    </div>
+  </section>
+
+  <details>
+    <summary>Как это устроено</summary>
+    <ol>
+      <li>Мелодия раскладывается по виртуальному барабану: у каждой ноты есть своё место по кругу.</li>
+      <li>Когда ручка поворачивается вперёд, барабан сдвигается. Каждая нота, мимо которой он прошёл, звучит один раз.</li>
+      <li>Назад барабан не крутится, как с храповиком. Остановишься, и последняя нота просто затухнет.</li>
+      <li>Мелодия сдвигается в диапазон гребёнки. Длинные ноты превращаются в повторы, потому что шкатулка не умеет тянуть звук.</li>
+    </ol>
+    <p class="small">Если на айфоне нет звука, выключи беззвучный режим. Если шкатулка не слышит, разреши микрофон для этого сайта.</p>
+  </details>
+</main>
+
+<script>
+(() => {
+const $ = id => document.getElementById(id);
+
+/* ---------- Звук ---------- */
+let ac = null, master = null, rvbIn = null;
+function audio() {
+  if (!ac) {
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
+    ac = new (window.AudioContext || window.webkitAudioContext)();
+    const comp = ac.createDynamicsCompressor();
+    comp.threshold.value = -14; comp.ratio.value = 4;
+    master = ac.createGain(); master.gain.value = 0.55;
+    const tone = ac.createBiquadFilter(); tone.type = 'peaking'; tone.frequency.value = 900; tone.gain.value = 3; tone.Q.value = 0.8;
+    master.connect(tone); tone.connect(comp); comp.connect(ac.destination);
+    // короткий резонанс деревянного корпуса
+    rvbIn = ac.createGain(); rvbIn.gain.value = 0.22;
+    const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 3200;
+    rvbIn.connect(lp);
+    [0.031, 0.047, 0.071].forEach((t, i) => {
+      const d = ac.createDelay(0.2); d.delayTime.value = t;
+      const fb = ac.createGain(); fb.gain.value = 0.42 - i * 0.06;
+      lp.connect(d); d.connect(fb); fb.connect(d); d.connect(comp);
+    });
+  }
+  if (ac.state === 'suspended') ac.resume();
+  return ac;
+}
+
+function pluck(p, v) {
+  if (!ac) return;
+  const t = ac.currentTime + 0.004;
+  const f = 440 * Math.pow(2, (p - 69) / 12);
+  const dec = Math.max(0.9, 3.4 - (p - 60) * 0.06);
+  const out = ac.createGain(); out.gain.value = v;
+  out.connect(master); out.connect(rvbIn);
+  const parts = [
+    [1, 0.5, dec],
+    [2.0, 0.08, dec * 0.35],
+    [5.4, 0.12, 0.18],
+    [8.9, 0.05, 0.07]
+  ];
+  for (const [m, a, d] of parts) {
+    const fr = f * m; if (fr > 16000) continue;
+    const o = ac.createOscillator(); o.type = 'sine'; o.frequency.value = fr;
+    const g = ac.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(a, t + 0.0025);
+    g.gain.exponentialRampToValueAtTime(0.0005, t + d);
+    o.connect(g); g.connect(out); o.start(t); o.stop(t + d + 0.05);
+  }
+}
+
+/* ---------- Примеры ---------- */
+function twinkle() {
+  const ph = [[60,60,67,67,69,69,67],[65,65,64,64,62,62,60],[67,67,65,65,64,64,62],[67,67,65,65,64,64,62],[60,60,67,67,69,69,67],[65,65,64,64,62,62,60]];
+  const ch = [[48,48,53,48],[53,48,43,48],[48,53,48,43],[48,53,48,43],[48,48,53,48],[53,48,43,48]];
+  const notes = [], bass = [];
+  ph.forEach((row, i) => {
+    row.forEach((p, j) => notes.push([p, i * 8 + j, j === 6 ? 2 : 1]));
+    ch[i].forEach((p, j) => bass.push([p, i * 8 + j * 2]));
+  });
+  return { title: 'Мерцай, звёздочка', bpm: 100, barBeats: 4, notes, bass };
+}
+const DEMOS = [
+  { title: 'С днём рождения', bpm: 100, barBeats: 3,
+    notes: [[67,2,.75],[67,2.75,.25],[69,3,1],[67,4,1],[72,5,1],[71,6,2],[67,8,.75],[67,8.75,.25],[69,9,1],[67,10,1],[74,11,1],[72,12,2],[67,14,.75],[67,14.75,.25],[79,15,1],[76,16,1],[72,17,1],[71,18,1],[69,19,1],[77,20,.75],[77,20.75,.25],[76,21,1],[72,22,1],[74,23,1],[72,24,2]],
+    bass: [[48,3],[43,6],[43,9],[48,12],[48,15],[53,18],[48,21],[43,23],[48,24]] },
+  { title: 'Alle meine Entchen', bpm: 110, barBeats: 4,
+    notes: [[60,0,1],[62,1,1],[64,2,1],[65,3,1],[67,4,2],[67,6,2],[69,8,1],[69,9,1],[69,10,1],[69,11,1],[67,12,4],[69,16,1],[69,17,1],[69,18,1],[69,19,1],[67,20,4],[65,24,1],[65,25,1],[65,26,1],[65,27,1],[64,28,2],[64,30,2],[62,32,1],[62,33,1],[62,34,1],[62,35,1],[60,36,4]],
+    bass: [[48,0],[48,4],[53,8],[48,12],[53,16],[48,20],[53,24],[48,28],[43,32],[48,36]] },
+  twinkle()
+];
+
+/* ---------- Песня и аранжировка ---------- */
+let song = null, arr = { events: [], total: 4 };
+let drumBeat = 0, nextIdx = 0, finished = false;
+
+function toSong(raw, extra) {
+  return Object.assign({
+    title: raw.title, bpm: raw.bpm || 100, barBeats: raw.barBeats || 4,
+    notes: raw.notes.map(([p, s, d]) => ({ p, s, d })),
+    bass: (raw.bass || []).map(([p, s]) => ({ p, s }))
+  }, extra);
+}
+
+function arrange(s) {
+  const lo = 65, hi = 98;
+  const mel = s.notes.slice().sort((a, b) => a.s - b.s);
+  const ps = mel.map(n => n.p).sort((a, b) => a - b);
+  const med = ps[ps.length >> 1] || 72;
+  const shift = Math.round((80 - med) / 12) * 12;
+  const ev = [];
+  let maxEnd = 0;
+  for (const n of mel) {
+    let p = n.p + shift;
+    while (p < lo) p += 12;
+    while (p > hi) p -= 12;
+    ev.push({ b: n.s, p, v: 0.9 });
+    if ($('useTrem').checked && n.d >= 1.5) {
+      for (let x = n.s + 0.5; x < n.s + n.d - 0.24; x += 0.5) ev.push({ b: x, p, v: 0.5 });
+    }
+    maxEnd = Math.max(maxEnd, n.s + n.d);
+  }
+  if ($('useBass').checked && s.bass.length) {
+    const bp = s.bass.map(n => n.p).sort((a, b) => a - b);
+    const bmed = bp[bp.length >> 1];
+    const bshift = Math.round((57 - bmed) / 12) * 12;
+    for (const n of s.bass) {
+      let p = n.p + bshift;
+      while (p < 48) p += 12;
+      while (p > 62) p -= 12;
+      ev.push({ b: n.s, p, v: 0.45 });
+    }
+  }
+  ev.sort((a, b) => a.b - b.b || b.p - a.p);
+  const total = Math.max(s.barBeats, Math.ceil((maxEnd - 1e-6) / s.barBeats) * s.barBeats);
+  return { events: ev, total, shift };
+}
+
+function setSong(s) {
+  song = s;
+  rearrange();
+  renderNow();
+}
+function rearrange() {
+  arr = arrange(song);
+  drumBeat = 0; nextIdx = 0; finished = false;
+  updatePos();
+}
+
+function renderNow() {
+  $('nowTitle').textContent = song.title;
+  const chips = $('nowChips'); chips.textContent = '';
+  const add = (t, cls) => { const c = document.createElement('span'); c.className = 'chip' + (cls ? ' ' + cls : ''); c.textContent = t; chips.append(c); };
+  add(song.sourceLabel, song.sourceClass);
+  if (song.extra) add(song.extra);
+  add(arr.events.length + ' штифтов');
+  add((arr.total / song.barBeats) + ' тактов');
+  if (arr.shift) add('сдвиг ' + (arr.shift > 0 ? '+' : '') + arr.shift + ' полутонов');
+  $('fragRow').hidden = !(song.kind === 'midi' && midi && midi.frags.length);
+  $('fragNext').disabled = !(midi && midi.frags.length > 1);
+}
+
+/* ---------- Барабан ---------- */
+function advance(db) {
+  if (db <= 0 || !arr.events.length) return;
+  if (finished) {
+    if (!$('loop').checked) return;
+    finished = false; drumBeat = 0; nextIdx = 0;
+  }
+  let target = drumBeat + db;
+  let guard = 0;
+  while (guard++ < 8) {
+    const end = Math.min(target, arr.total);
+    const ev = arr.events;
+    let fired = 0;
+    while (nextIdx < ev.length && ev[nextIdx].b < end) {
+      if (fired < 24) pluck(ev[nextIdx].p, ev[nextIdx].v);
+      fired++; nextIdx++;
+    }
+    if (target < arr.total) { drumBeat = target; break; }
+    if ($('loop').checked) { target -= arr.total; drumBeat = 0; nextIdx = 0; }
+    else { drumBeat = arr.total; finished = true; break; }
+  }
+  tempoSamples.push([performance.now(), db]);
+  updatePos();
+}
+
+function updatePos() {
+  if (!song) return;
+  const bars = arr.total / song.barBeats;
+  const bar = Math.min(bars, Math.floor(drumBeat / song.barBeats) + 1);
+  $('pos').textContent = finished ? 'мелодия закончилась' : 'такт ' + bar + ' из ' + bars;
+}
+
+/* ---------- Ручка ---------- */
+const crank = $('crank'), drum = $('drum');
+let crankAngle = 0, dragging = false, lastA = 0, turnedOnce = false;
+const tempoSamples = [];
+
+function angleOf(e) {
+  const r = crank.getBoundingClientRect();
+  return Math.atan2(e.clientY - (r.top + r.height / 2), e.clientX - (r.left + r.width / 2));
+}
+function beatsPerRev() { return parseFloat($('bpr').value); }
+function turn(d) {
+  crankAngle += d;
+  if (d > 0) {
+    advance(d / (Math.PI * 2) * beatsPerRev());
+    if (!turnedOnce) { turnedOnce = true; $('hint').hidden = true; }
+  }
+}
+crank.addEventListener('pointerdown', e => {
+  audio(); dragging = true; lastA = angleOf(e);
+  try { crank.setPointerCapture(e.pointerId); } catch (_) {}
+  e.preventDefault();
+});
+crank.addEventListener('pointermove', e => {
+  if (!dragging) return;
+  const a = angleOf(e);
+  let d = a - lastA;
+  if (d > Math.PI) d -= Math.PI * 2;
+  if (d < -Math.PI) d += Math.PI * 2;
+  lastA = a;
+  turn(d);
+});
+['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => crank.addEventListener(t, () => { dragging = false; }));
+
+/* ---------- Рисование ---------- */
+function fit(c) {
+  const r = c.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  const w = Math.round(r.width * dpr), h = Math.round(r.height * dpr);
+  if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+  const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return [g, r.width, r.height];
+}
+function tok() {
+  const cs = getComputedStyle(document.documentElement);
+  const t = n => cs.getPropertyValue(n).trim();
+  return { bg: t('--bg'), surface: t('--surface'), ink: t('--ink'), muted: t('--muted'), line: t('--line'), brass: t('--brass'), soft: t('--brass-soft'), pin: t('--pin'), done: t('--pin-done'), wood: t('--wood') };
+}
+
+function drawDrum(T) {
+  const [g, w, h] = fit(drum);
+  g.fillStyle = T.bg; g.fillRect(0, 0, w, h);
+  if (!song) return;
+  const pxb = Math.max(34, Math.min(70, w / 9));
+  const combX = Math.round(w * 0.24);
+  const pMin = 46, pMax = 100;
+  const y = p => h - 12 - (p - pMin) / (pMax - pMin) * (h - 24);
+  // такты
+  g.strokeStyle = T.line; g.lineWidth = 1;
+  const first = Math.floor((drumBeat - combX / pxb) / song.barBeats) * song.barBeats;
+  for (let b = first; b < drumBeat + (w - combX) / pxb + song.barBeats; b += song.barBeats) {
+    if (b < 0 || b > arr.total) continue;
+    const x = combX + (b - drumBeat) * pxb;
+    g.beginPath(); g.moveTo(x + 0.5, 6); g.lineTo(x + 0.5, h - 6); g.stroke();
+  }
+  // конец мелодии
+  const xe = combX + (arr.total - drumBeat) * pxb;
+  if (xe < w) { g.fillStyle = T.surface; g.fillRect(xe, 0, w - xe, h); }
+  // штифты (с повтором, если играем по кругу)
+  const loops = $('loop').checked ? [0, arr.total] : [0];
+  for (const off of loops) {
+    for (const e of arr.events) {
+      const x = combX + (e.b + off - drumBeat) * pxb;
+      if (x < -10 || x > w + 10) continue;
+      const passed = x < combX - 0.5;
+      const near = passed && x > combX - pxb * 0.18;
+      g.fillStyle = near ? T.brass : passed ? T.done : (e.v < 0.6 ? T.muted : T.pin);
+      const r = near ? 5 : (e.v < 0.6 ? 2.6 : 3.6);
+      g.beginPath(); g.arc(x, y(e.p), r, 0, Math.PI * 2); g.fill();
+    }
+  }
+  // гребёнка
+  g.fillStyle = T.brass;
+  g.fillRect(combX - 1.5, 4, 3, h - 8);
+  g.globalAlpha = 0.25;
+  for (let p = 48; p <= 98; p += 2) g.fillRect(combX - 9, y(p) - 0.5, 9, 1);
+  g.globalAlpha = 1;
+}
+
+function drawCrank(T) {
+  const [g, w, h] = fit(crank);
+  g.clearRect(0, 0, w, h);
+  const cx = w / 2, cy = h / 2, R = Math.min(w, h) / 2 - 6;
+  // колесо
+  g.save(); g.translate(cx, cy); g.rotate(crankAngle);
+  g.fillStyle = T.soft; g.beginPath(); g.arc(0, 0, R * 0.62, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = T.brass; g.lineWidth = 2;
+  for (let i = 0; i < 24; i++) {
+    const a = i / 24 * Math.PI * 2;
+    g.beginPath(); g.moveTo(Math.cos(a) * R * 0.56, Math.sin(a) * R * 0.56); g.lineTo(Math.cos(a) * R * 0.66, Math.sin(a) * R * 0.66); g.stroke();
+  }
+  // рычаг
+  g.strokeStyle = T.wood; g.lineCap = 'round'; g.lineWidth = 10;
+  g.beginPath(); g.moveTo(0, 0); g.lineTo(R * 0.78, 0); g.stroke();
+  g.fillStyle = T.brass; g.beginPath(); g.arc(0, 0, 9, 0, Math.PI * 2); g.fill();
+  g.fillStyle = T.wood; g.beginPath(); g.arc(R * 0.82, 0, 15, 0, Math.PI * 2); g.fill();
+  g.fillStyle = T.brass; g.beginPath(); g.arc(R * 0.82, 0, 5, 0, Math.PI * 2); g.fill();
+  g.restore();
+  // стрелка направления
+  g.strokeStyle = T.muted; g.lineWidth = 1.5;
+  g.beginPath(); g.arc(cx, cy, R, -Math.PI * 0.9, -Math.PI * 0.55); g.stroke();
+  const ax = cx + Math.cos(-Math.PI * 0.55) * R, ay = cy + Math.sin(-Math.PI * 0.55) * R;
+  g.beginPath(); g.moveTo(ax, ay); g.lineTo(ax - 9, ay - 5); g.moveTo(ax, ay); g.lineTo(ax - 4, ay + 9); g.stroke();
+}
+
+let lastT = performance.now(), shownTempo = 0;
+function frame(now) {
+  const dt = Math.min(0.1, (now - lastT) / 1000); lastT = now;
+  if ($('auto').checked && ac) turn(parseFloat($('speed').value) * Math.PI * 2 * dt);
+  while (tempoSamples.length && now - tempoSamples[0][0] > 700) tempoSamples.shift();
+  const sum = tempoSamples.reduce((a, s) => a + s[1], 0);
+  const bpm = sum / 0.7 * 60;
+  shownTempo += (bpm - shownTempo) * 0.15;
+  $('tempo').textContent = shownTempo < 3 ? '0' : Math.round(shownTempo);
+  const T = tok();
+  drawDrum(T); drawCrank(T);
+  requestAnimationFrame(frame);
+}
+
+/* ---------- Миди ---------- */
+let midi = null;
+
+function parseMidi(buf) {
+  const d = new DataView(buf); let pos = 0;
+  const str = n => { let s = ''; for (let i = 0; i < n; i++) s += String.fromCharCode(d.getUint8(pos + i)); pos += n; return s; };
+  if (str(4) !== 'MThd') throw new Error('Это не миди-файл.');
+  const hl = d.getUint32(pos); pos += 4;
+  const ntr = d.getUint16(pos + 2), div = d.getUint16(pos + 4); pos += hl;
+  if (div & 0x8000) throw new Error('Этот вид миди-файла не поддерживается.');
+  let tempo = 500000, tempoSet = false, barBeats = 4, sigSet = false;
+  const parts = new Map();
+  let title = '';
+  for (let t = 0; t < ntr && pos + 8 <= d.byteLength; t++) {
+    const id = str(4); const len = d.getUint32(pos); pos += 4; const end = Math.min(pos + len, d.byteLength);
+    if (id !== 'MTrk') { pos = end; continue; }
+    let tick = 0, rs = 0, name = '';
+    const open = {};
+    const vlq = () => { let v = 0, b; do { b = d.getUint8(pos++); v = (v << 7) | (b & 0x7f); } while (b & 0x80 && pos < end); return v; };
+    const part = ch => { const k = t * 16 + ch; if (!parts.has(k)) parts.set(k, { track: t, ch, name: '', notes: [] }); return parts.get(k); };
+    while (pos < end) {
+      tick += vlq();
+      let st = d.getUint8(pos);
+      if (st & 0x80) pos++; else st = rs;
+      if (st === 0xFF) {
+        const type = d.getUint8(pos++); const l = vlq();
+        if (type === 0x51 && !tempoSet && l >= 3) { tempo = (d.getUint8(pos) << 16) | (d.getUint8(pos + 1) << 8) | d.getUint8(pos + 2); tempoSet = true; }
+        else if (type === 0x03) { let s = ''; for (let i = 0; i < l; i++) s += String.fromCharCode(d.getUint8(pos + i)); name = s; if (t === 0 && !title) title = s; }
+        else if (type === 0x58 && !sigSet && l >= 2) { barBeats = d.getUint8(pos) * 4 / Math.pow(2, d.getUint8(pos + 1)); sigSet = true; }
+        pos += l;
+      } else if (st === 0xF0 || st === 0xF7) {
+        pos += vlq();
+      } else if (st & 0x80) {
+        rs = st;
+        const type = st & 0xF0, ch = st & 0x0F;
+        const a = d.getUint8(pos++);
+        const b = (type === 0xC0 || type === 0xD0) ? 0 : d.getUint8(pos++);
+        const k = ch * 128 + a;
+        if (type === 0x90 && b > 0) {
+          if (open[k]) part(ch).notes.push({ p: a, t: open[k], d: tick - open[k] });
+          open[k] = tick;
+        } else if (type === 0x80 || (type === 0x90 && b === 0)) {
+          if (open[k] !== undefined) { part(ch).notes.push({ p: a, t: open[k], d: tick - open[k] }); delete open[k]; }
+        }
+      } else { pos = end; }
+    }
+    for (const k in open) { const ch = Math.floor(k / 128); part(ch).notes.push({ p: k % 128, t: open[k], d: Math.max(1, tick - open[k]) }); }
+    for (const p of parts.values()) if (p.track === t) p.name = name;
+    pos = end;
+  }
+  const list = [...parts.values()].filter(p => p.notes.length);
+  list.forEach(p => p.notes.forEach(n => { n.s = n.t / div; n.d = n.d / div; }));
+  return { bpm: Math.round(60e6 / tempo), barBeats: barBeats || 4, parts: list, title };
+}
+
+function pickMelody(parts) {
+  const cands = parts.filter(p => p.ch !== 9 && p.notes.length >= 12);
+  if (!cands.length) return null;
+  let best = null;
+  for (const p of cands) {
+    const ns = p.notes;
+    const mean = ns.reduce((a, n) => a + n.p, 0) / ns.length;
+    const starts = new Map(); ns.forEach(n => { const k = Math.round(n.s * 16); starts.set(k, (starts.get(k) || 0) + 1); });
+    const poly = 1 - starts.size / ns.length;
+    const named = /melod|vocal|voice|lead|sing|melodie|gesang|stimme|voc|solo/i.test(p.name) ? 40 : 0;
+    const badName = /bass|drum|pad|string|chord|piano l|accomp|begleit/i.test(p.name) ? -25 : 0;
+    const range = mean >= 58 && mean <= 84 ? 20 : 0;
+    const score = named + badName + range + Math.min(ns.length, 400) / 12 - poly * 45 + mean * 0.25;
+    if (!best || score > best.score) best = { part: p, score };
+  }
+  return best.part;
+}
+
+function monophonic(notes) {
+  const ns = notes.slice().sort((a, b) => a.s - b.s || b.p - a.p);
+  const out = [];
+  for (const n of ns) {
+    const last = out[out.length - 1];
+    if (last && n.s - last.s < 1 / 16) continue;
+    if (last) last.d = Math.min(last.d, n.s - last.s);
+    out.push({ p: n.p, s: n.s, d: n.d });
+  }
+  return out.filter(n => n.d > 0.05);
+}
+
+function findFragments(mel, barBeats, bars) {
+  const W = bars * barBeats;
+  const maxEnd = mel.reduce((a, n) => Math.max(a, n.s + n.d), 0);
+  const lastBar = Math.floor(maxEnd / barBeats);
+  const wins = [];
+  for (let b = 0; b <= lastBar; b++) {
+    const s0 = b * barBeats, set = new Set(); let cnt = 0, sumP = 0;
+    for (const n of mel) if (n.s >= s0 && n.s < s0 + W) { set.add(Math.round((n.s - s0) * 4) + ':' + n.p); cnt++; sumP += n.p; }
+    if (cnt >= Math.max(6, bars * 1.5)) wins.push({ b, set, cnt, mean: sumP / cnt });
+  }
+  const sim = (a, c) => { let i = 0; for (const k of a.set) if (c.set.has(k)) i++; return i / Math.max(a.set.size, c.set.size); };
+  for (const w of wins) {
+    w.rep = 0;
+    for (const v of wins) if (Math.abs(v.b - w.b) >= bars && sim(w, v) > 0.7) w.rep++;
+    w.score = w.rep * 10 + w.cnt * 0.08 + w.mean * 0.12;
+  }
+  wins.sort((a, b) => b.score - a.score || a.b - b.b);
+  const chosen = [];
+  for (const w of wins) {
+    if (chosen.some(c => Math.abs(c.b - w.b) < Math.max(2, bars / 2) || sim(c, w) > 0.7)) continue;
+    chosen.push(w);
+    if (chosen.length >= 6) break;
+  }
+  return chosen;
+}
+
+function songFromMidi() {
+  const m = midi, bars = parseInt($('fragBars').value, 10);
+  const f = m.frags[m.idx];
+  const s0 = f.b * m.barBeats, W = bars * m.barBeats;
+  const notes = m.mel.filter(n => n.s >= s0 && n.s < s0 + W).map(n => ({ p: n.p, s: n.s - s0, d: Math.min(n.d, s0 + W - n.s) }));
+  const acc = m.acc.filter(n => n.s >= s0 - 0.05 && n.s < s0 + W);
+  const bass = [];
+  const step = m.barBeats >= 4 ? m.barBeats / 2 : m.barBeats;
+  for (let x = 0; x < W; x += step) {
+    let low = null;
+    for (const n of acc) { const r = n.s - s0; if (r >= x - 0.05 && r < x + 0.5 && (!low || n.p < low.p)) low = n; }
+    if (low) bass.push({ p: low.p, s: x });
+  }
+  const from = f.b + 1, to = f.b + bars;
+  return {
+    title: m.title, bpm: m.bpm, barBeats: m.barBeats, notes, bass, kind: 'midi',
+    sourceLabel: 'Миди-файл', sourceClass: 'ok',
+    extra: 'такты ' + from + '–' + to + (f.rep ? ', повторяется ' + (f.rep + 1) + ' раз' : '')
+  };
+}
+
+function rebuildFrags() {
+  midi.frags = findFragments(midi.mel, midi.barBeats, parseInt($('fragBars').value, 10));
+  if (!midi.frags.length) midi.frags = [{ b: 0, rep: 0 }];
+  midi.idx = 0;
+}
+
+$('midiFile').addEventListener('change', async e => {
+  const file = e.target.files[0]; if (!file) return;
+  const st = $('midiStatus'); st.classList.remove('err');
+  try {
+    const m = parseMidi(await file.arrayBuffer());
+    const melPart = pickMelody(m.parts);
+    if (!melPart) throw new Error('В файле не нашлось мелодии.');
+    const mel = monophonic(melPart.notes);
+    const acc = [];
+    for (const p of m.parts) if (p !== melPart && p.ch !== 9) acc.push(...p.notes);
+    const clean = (m.title || '').replace(/[^\x20-\x7EÀ-ɏ]/g, '').trim();
+    midi = { mel, acc, bpm: m.bpm, barBeats: m.barBeats, title: clean || file.name.replace(/\.(mid|midi)$/i, ''), frags: [], idx: 0 };
+    rebuildFrags();
+    setSong(songFromMidi());
+    st.textContent = 'Мелодия взята из партии «' + (melPart.name.trim() || 'без названия') + '». Партий в файле: ' + m.parts.length + '.';
+  } catch (err) {
+    st.classList.add('err'); st.textContent = err.message || 'Не получилось прочитать файл.';
+  }
+  e.target.value = '';
+});
+$('fragNext').addEventListener('click', () => { if (!midi) return; midi.idx = (midi.idx + 1) % midi.frags.length; setSong(songFromMidi()); });
+$('fragBars').addEventListener('change', () => { if (!midi) return; rebuildFrags(); setSong(songFromMidi()); });
+
+/* ---------- Голос и Claude ---------- */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let listening = false, rec = null, finals = '', interim = '';
+let guessTimer = 0, guessCtl = null, lastGuess = null, lastGuessText = '';
+
+try { const l = localStorage.getItem('mb-lang'); if (l) $('lang').value = l; } catch (_) {}
+$('lang').addEventListener('change', () => { try { localStorage.setItem('mb-lang', $('lang').value); } catch (_) {} });
+if (!SR) {
+  $('listenBtn').disabled = true;
+  setStatus('Этот браузер не умеет слушать. Открой страницу в Safari или Chrome.', true);
+}
+
+async function api(path, body, signal) {
+  let r;
+  try {
+    r = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal, credentials: 'same-origin' });
+  } catch (e) {
+    if (e.name === 'AbortError') throw e;
+    throw new Error('Нет связи с сервером. Проверь интернет.');
+  }
+  let data = null;
+  try { data = await r.json(); } catch (_) {}
+  if (!r.ok || !data || data.error) throw new Error((data && data.error) || 'Сервер не ответил.');
+  return data;
+}
+
+function setStatus(t, err) { const st = $('aiStatus'); st.textContent = t; st.classList.toggle('err', !!err); }
+
+function showGuess(g, pending) {
+  const el = $('guess'); el.className = 'guess';
+  if (pending) { el.textContent = 'Думаю…'; return; }
+  if (!g || !g.title) { el.textContent = 'Пока не поняла. Говори дальше.'; return; }
+  el.classList.add(g.sure ? 'ok' : 'warn');
+  el.textContent = (g.sure ? 'Поняла: ' : 'Может быть: ') + '«' + g.title + '»' + (g.artist ? ', ' + g.artist : '');
+}
+
+function heardText() { return (finals + ' ' + interim).trim(); }
+
+function scheduleGuess() {
+  clearTimeout(guessTimer);
+  const text = heardText();
+  if (text.length < 4 || text === lastGuessText) return;
+  guessTimer = setTimeout(() => runGuess(text), 900);
+}
+
+async function runGuess(text) {
+  if (guessCtl) guessCtl.abort();
+  const ctl = guessCtl = new AbortController();
+  showGuess(null, true);
+  try {
+    const g = await api('/api/musicbox/identify', { text }, ctl.signal);
+    if (ctl !== guessCtl) return;
+    lastGuess = g; lastGuessText = text; showGuess(g);
+  } catch (e) {
+    if (e.name !== 'AbortError' && ctl === guessCtl) { const el = $('guess'); el.className = 'guess'; el.textContent = e.message; }
+  }
+}
+
+function setListeningUI(on) {
+  listening = on;
+  $('listenBtn').textContent = on ? 'Закончить' : 'Слушать';
+  $('listenBtn').classList.toggle('on', on);
+  $('listenPanel').hidden = false;
+  $('rec').hidden = !on;
+}
+
+function startListening() {
+  audio();
+  finals = ''; interim = ''; lastGuess = null; lastGuessText = '';
+  clearTimeout(guessTimer); if (guessCtl) guessCtl.abort();
+  const el = $('guess'); el.className = 'guess'; el.textContent = 'Говори…';
+  setStatus('');
+  const r = rec = new SR();
+  r.lang = $('lang').value; r.continuous = true; r.interimResults = true;
+  r.onresult = e => {
+    interim = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const t = e.results[i][0].transcript;
+      if (e.results[i].isFinal) finals = (finals + ' ' + t).trim(); else interim += t;
+    }
+    scheduleGuess();
+  };
+  r.onerror = e => {
+    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+      rec = null; setListeningUI(false);
+      setStatus('Нет доступа к микрофону. Разреши микрофон для этого сайта в настройках браузера.', true);
+    }
+  };
+  r.onend = () => { if (listening && rec === r) { try { r.start(); } catch (_) {} } };
+  try { r.start(); } catch (_) { rec = null; setStatus('Не получилось включить микрофон.', true); return; }
+  setListeningUI(true);
+}
+
+async function stopListening() {
+  const r = rec; rec = null;
+  setListeningUI(false);
+  if (r) {
+    await new Promise(res => {
+      const done = setTimeout(res, 1500);
+      r.onend = () => { clearTimeout(done); res(); };
+      try { r.stop(); } catch (_) { clearTimeout(done); res(); }
+    });
+  }
+  const text = heardText();
+  if (!text) { $('guess').textContent = ''; setStatus('Я ничего не услышала. Нажми «Слушать» и скажи ещё раз.', true); return; }
+  findAndLoad(text);
+}
+
+async function findAndLoad(text) {
+  $('listenBtn').disabled = true; $('aiBtn').disabled = true;
+  clearTimeout(guessTimer);
+  try {
+    let g = text === lastGuessText ? lastGuess : null;
+    if (!g) {
+      if (guessCtl) guessCtl.abort();
+      setStatus('Угадываю песню…'); showGuess(null, true);
+      g = await api('/api/musicbox/identify', { text });
+      showGuess(g);
+    }
+    if (!g.title) { setStatus('Не поняла, что за песня. Я услышала: «' + text + '». Скажи название или исполнителя.', true); return; }
+    setStatus('Записываю мелодию для шкатулки… Это может занять до минуты.');
+    const r = await api('/api/musicbox/melody', { title: g.title, artist: g.artist || '' });
+    const conf = r.confidence === 'high' ? ['уверенно', 'ok'] : r.confidence === 'low' ? ['неуверенно', 'bad'] : ['примерно', 'warn'];
+    midi = null;
+    setSong(toSong({ title: r.title + (r.artist ? ' — ' + r.artist : ''), bpm: r.bpm, barBeats: r.beatsPerBar, notes: r.notes, bass: r.bass },
+      { kind: 'ai', sourceLabel: 'Claude: ' + conf[0], sourceClass: conf[1], extra: r.part || '' }));
+    setStatus('Готово. Крути ручку.');
+    document.querySelector('.stage').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+  } catch (e) {
+    setStatus(e.message || 'Что-то пошло не так. Попробуй ещё раз.', true);
+  } finally {
+    $('listenBtn').disabled = !SR; $('aiBtn').disabled = false;
+  }
+}
+
+$('listenBtn').addEventListener('click', () => { if (listening) stopListening(); else startListening(); });
+$('aiForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const q = $('q').value.trim();
+  if (!q) { setStatus('Напиши название песни.', true); return; }
+  $('q').blur();
+  $('listenPanel').hidden = false;
+  lastGuess = null; lastGuessText = '';
+  findAndLoad(q);
+});
+
+/* ---------- Настройки ---------- */
+$('speed').addEventListener('input', () => { $('speedVal').textContent = String($('speed').value).replace('.', ',') + ' об/с'; });
+$('auto').addEventListener('change', () => { if ($('auto').checked) { audio(); $('hint').hidden = true; turnedOnce = true; } });
+['useBass', 'useTrem'].forEach(id => $(id).addEventListener('change', () => { if (song) { rearrange(); renderNow(); } }));
+$('loop').addEventListener('change', () => { if ($('loop').checked) finished = false; });
+
+DEMOS.forEach(d => {
+  const b = document.createElement('button'); b.type = 'button'; b.textContent = d.title;
+  b.addEventListener('click', () => { audio(); midi = null; setSong(toSong(d, { kind: 'demo', sourceLabel: 'Пример' })); });
+  $('demos').append(b);
+});
+
+setSong(toSong(DEMOS[0], { kind: 'demo', sourceLabel: 'Пример' }));
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
